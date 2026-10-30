@@ -1,0 +1,101 @@
+# 🍲 Cuina Casa
+
+App web familiar per gestionar la cuina i les compres de casa. Funciona al mòbil (instal·lable) i a l'ordinador, i tota la família comparteix les mateixes dades en temps real.
+
+## Què fa
+
+- **Llista de la compra** ordenada per seccions del súper, compartida i en temps real. S'hi escriu en llenguatge natural ("2 l de llet") o s'escaneja el codi de barres. En tornar del súper, el botó **Al rebost** passa el que s'ha comprat a l'inventari.
+- **Rebost, nevera i congelador** amb quantitats, dates de caducitat i avís quan en queda poc.
+- **Receptes** escrites a mà o **importades des d'un enllaç** de qualsevol web de cuina (llegeix el format estàndard schema.org/Recipe).
+- **Menú setmanal** (esmorzar, dinar i sopar) que **genera la llista de la compra** sumant ingredients, adaptant les racions i restant el que ja hi ha a casa.
+- **Avisos de caducitat** a la pantalla d'inici i, opcionalment, com a notificació del mòbil.
+- **Escaneig de codis de barres** amb la càmera, amb cerca a [Open Food Facts](https://world.openfoodfacts.org) i memòria dels productes de casa.
+- **Instal·lable** (PWA) i amb còpia local de la llista i el rebost per consultar-les sense cobertura.
+
+## Tecnologia
+
+| Peça | Ús |
+|---|---|
+| [Next.js](https://nextjs.org) + React + Tailwind CSS | L'aplicació web |
+| [Supabase](https://supabase.com) | Base de dades, inici de sessió amb Google i temps real |
+| [Vercel](https://vercel.com) | Publicació automàtica a cada canvi a GitHub |
+
+---
+
+## Posada en marxa
+
+Calen tres coses: un projecte de Supabase, l'inici de sessió de Google i la publicació a Vercel. Uns 20-30 minuts en total.
+
+### 1. Crear el projecte de Supabase
+
+1. Entra a [supabase.com](https://supabase.com) amb el teu compte de GitHub i prem **New project**.
+2. Nom: `cuina-casa`. Posa una contrasenya de base de dades (desa-la en lloc segur) i tria una regió d'Europa.
+3. Quan estigui creat, ves a **SQL Editor → New query**, enganxa tot el contingut de [`supabase/migrations/0001_esquema_inicial.sql`](supabase/migrations/0001_esquema_inicial.sql) i prem **Run**. Ha de dir *Success*.
+4. Ves a **Project Settings → API** i apunta:
+   - **Project URL** (`https://xxxx.supabase.co`)
+   - **anon public key** (una clau llarga que comença per `eyJ…`)
+
+### 2. Activar l'inici de sessió amb Google
+
+1. A [Google Cloud Console](https://console.cloud.google.com/), crea un projecte nou (per exemple, `Cuina Casa`).
+2. **APIs i serveis → Pantalla de consentiment d'OAuth**: tipus *Extern*, nom de l'app `Cuina Casa` i el teu correu. A *Usuaris de prova* afegeix els correus de Google de la família (o publica l'app perquè hi pugui entrar qualsevol compte).
+3. **APIs i serveis → Credencials → Crea credencials → ID de client d'OAuth**:
+   - Tipus: *Aplicació web*
+   - **URI de redirecció autoritzats**: `https://xxxx.supabase.co/auth/v1/callback` (amb la teva Project URL)
+4. Copia l'**ID de client** i el **secret de client**.
+5. A Supabase: **Authentication → Sign In / Providers → Google**, activa'l i enganxa-hi l'ID i el secret. Desa.
+
+### 3. Publicar a Vercel
+
+1. Entra a [vercel.com](https://vercel.com) amb GitHub i prem **Add New → Project**.
+2. Importa el repositori `xavigaya/cuina-casa`.
+3. A **Environment Variables** afegeix:
+   - `NEXT_PUBLIC_SUPABASE_URL` → la Project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → la clau anon
+4. Prem **Deploy**. En acabar tindràs una adreça com `https://cuina-casa.vercel.app`.
+
+### 4. Dir a Supabase quina és l'adreça de l'app
+
+A Supabase: **Authentication → URL Configuration**
+
+- **Site URL**: `https://cuina-casa.vercel.app` (la teva adreça de Vercel)
+- **Redirect URLs**: afegeix
+  - `https://cuina-casa.vercel.app/auth/callback`
+  - `http://localhost:3000/auth/callback` (només si vols provar-la a l'ordinador)
+
+Ja està! Obre l'adreça, entra amb Google i crea la llar.
+
+### 5. Convidar la família
+
+A **Ajustos** hi ha un **codi d'invitació**. Cada membre entra amb el seu compte de Google i, la primera vegada, tria *Tinc un codi* i l'escriu. Per instal·lar-la al mòbil: a Android, menú de Chrome → *Instal·la l'aplicació*; a iPhone, Safari → Compartir → *Afegeix a la pantalla d'inici*.
+
+---
+
+## Desenvolupament local
+
+```bash
+cp .env.example .env.local   # i omple-hi les dues variables
+npm install
+npm run dev                  # http://localhost:3000
+npm test                     # proves de la lògica (unitats, llista, importació)
+```
+
+## Estructura
+
+```
+src/
+  app/
+    (app)/            pàgines amb sessió: inici, llista, rebost, receptes, menu, ajustos
+    api/import-recipe servei que llegeix receptes d'una web
+    auth/callback     retorn de l'inici de sessió de Google
+    login/            pantalla d'entrada
+  components/         peces de la interfície (escàner, fulls, formularis…)
+  lib/                lògica: seccions, unitats, ingredients, càlcul de la llista
+  proxy.ts            protegeix les pàgines i refresca la sessió
+supabase/migrations/  esquema de la base de dades amb seguretat per llar
+public/sw.js          service worker (instal·lació i ús sense connexió)
+```
+
+## Seguretat
+
+Cada taula té *Row Level Security*: una persona només pot llegir i modificar les dades de les llars de les quals és membre. Per entrar en una llar cal el codi d'invitació, que es pot canviar en qualsevol moment des d'Ajustos.
