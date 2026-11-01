@@ -15,6 +15,7 @@ import { useNutrition } from "@/lib/use-nutrition";
 import { analyzeWeek } from "@/lib/menu-analysis";
 import type { Proposal } from "@/lib/harvard";
 import { DayFooter, WeekSummary, WeekendCard } from "@/components/menu-nutrition";
+import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
 
 type Entry = MealPlanEntry & { recipes: Pick<Recipe, "id" | "title" | "servings" | "image_url" | "course"> | null };
 
@@ -38,6 +39,7 @@ export default function MenuPage() {
   const [busy, setBusy] = useState(false);
   const [showBreakfast, setShowBreakfast] = useState(false);
   const nutrition = useNutrition(household.id);
+  const [onlineReq, setOnlineReq] = useState<OnlineSearchRequest | null>(null);
   const dayList = useMemo(() => weekDays(monday).map(toISODate), [monday]);
 
   const analysis = useMemo(() => {
@@ -139,7 +141,9 @@ export default function MenuPage() {
                 <WeekendCard
                   proposals={analysis.weekend.proposals}
                   slots={analysis.weekend.slots}
+                  imbalance={analysis.weekend.imbalance}
                   onAdd={(slot, p) => addProposal(slot.day, slot.meal, p)}
+                  onSearchOnline={(slot, imbalance, reason) => setOnlineReq({ imbalance, reason, target: slot })}
                 />
               )}
               <section className={`card p-4 ${isToday ? "ring-2 ring-tomato" : ""} ${past ? "opacity-60" : ""}`}>
@@ -194,7 +198,13 @@ export default function MenuPage() {
                     );
                   })}
                 </div>
-                {dayAnalysis && <DayFooter analysis={dayAnalysis} onAdd={(p) => addProposal(iso, "sopar", p)} />}
+                {dayAnalysis && (
+                  <DayFooter
+                    analysis={dayAnalysis}
+                    onAdd={(p) => addProposal(iso, "sopar", p)}
+                    onSearchOnline={(imbalance, reason) => setOnlineReq({ imbalance, reason, target: { day: iso, meal: "sopar" } })}
+                  />
+                )}
               </section>
               </div>
             );
@@ -206,6 +216,15 @@ export default function MenuPage() {
           )}
         </div>
       )}
+
+      <OnlineRecipesSheet
+        request={onlineReq}
+        onClose={() => setOnlineReq(null)}
+        onImported={() => {
+          reload();
+          nutrition.reload();
+        }}
+      />
 
       <Sheet open={!!slot} onClose={() => setSlot(null)} title={slot ? `${MEALS.find((m) => m.id === slot.meal)?.label} · ${formatShortDate(slot.day)}` : ""}>
         {slot && <PickRecipe key={`${slot.day}${slot.meal}`} recipes={recipes} defaultServings={household.servings} onPick={addEntry} />}

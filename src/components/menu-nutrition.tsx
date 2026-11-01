@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Lightbulb, Plus } from "lucide-react";
+import { Globe, Lightbulb, Plus } from "lucide-react";
 import { Disclaimer, NutrientsRow, PlateBar } from "./nutrition";
 import { dayName } from "@/lib/dates";
-import { PROTEIN_KINDS, type Proposal } from "@/lib/harvard";
+import { PROTEIN_KINDS, describeImbalance, type Imbalance, type Proposal } from "@/lib/harvard";
 import type { DayAnalysis, WeekAnalysis, WeekendSlot } from "@/lib/menu-analysis";
 
 export function WeekSummary({ analysis }: { analysis: WeekAnalysis }) {
@@ -57,7 +57,15 @@ export function WeekSummary({ analysis }: { analysis: WeekAnalysis }) {
   );
 }
 
-export function DayFooter({ analysis, onAdd }: { analysis: DayAnalysis; onAdd: (p: Proposal) => void }) {
+export function DayFooter({
+  analysis,
+  onAdd,
+  onSearchOnline,
+}: {
+  analysis: DayAnalysis;
+  onAdd: (p: Proposal) => void;
+  onSearchOnline: (imbalance: Imbalance, reason: string) => void;
+}) {
   if (analysis.counted === 0 && !analysis.imbalance) return null;
   return (
     <div className="mt-3 space-y-3 border-t border-line pt-3">
@@ -68,7 +76,15 @@ export function DayFooter({ analysis, onAdd }: { analysis: DayAnalysis; onAdd: (
           {(analysis.incomplete || analysis.unknown > 0) && <p className="text-[11px] text-muted">* Total incomplet</p>}
         </div>
       )}
-      {analysis.imbalance && <Proposals proposals={analysis.proposals} title="Per al sopar" onAdd={onAdd} reasonFallback="Avui" />}
+      {analysis.imbalance && (
+        <Proposals
+          proposals={analysis.proposals}
+          title="Per al sopar"
+          onAdd={onAdd}
+          reasonFallback="Avui"
+          onSearchOnline={() => onSearchOnline(analysis.imbalance!, describeImbalance(analysis.imbalance!, "dia"))}
+        />
+      )}
     </div>
   );
 }
@@ -78,11 +94,13 @@ function Proposals({
   title,
   onAdd,
   reasonFallback,
+  onSearchOnline,
 }: {
   proposals: Proposal[];
   title: string;
   onAdd: (p: Proposal) => void;
   reasonFallback: string;
+  onSearchOnline: () => void;
 }) {
   return (
     <div className="rounded-2xl bg-herb-soft/60 p-3">
@@ -92,7 +110,6 @@ function Proposals({
       {proposals.length === 0 ? (
         <p className="text-sm text-muted">
           {reasonFallback === "Avui" ? "Avui hi ha algun desequilibri" : "La setmana té algun desequilibri"}, però cap recepta guardada no el compensa prou.
-          Prova d'afegir receptes amb més verdura, peix o llegums.
         </p>
       ) : (
         <>
@@ -118,6 +135,14 @@ function Proposals({
           </ul>
         </>
       )}
+      <button
+        className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-full py-2 text-xs font-bold ${
+          proposals.length === 0 ? "bg-herb text-paper" : "text-herb"
+        }`}
+        onClick={onSearchOnline}
+      >
+        <Globe className="size-4" /> {proposals.length === 0 ? "Busca receptes a Internet" : "Més idees a Internet"}
+      </button>
     </div>
   );
 }
@@ -125,18 +150,22 @@ function Proposals({
 export function WeekendCard({
   proposals,
   slots,
+  imbalance,
   onAdd,
+  onSearchOnline,
 }: {
   proposals: Proposal[];
   slots: WeekendSlot[];
+  imbalance: Imbalance;
   onAdd: (slot: WeekendSlot, p: Proposal) => void;
+  onSearchOnline: (slot: WeekendSlot, imbalance: Imbalance, reason: string) => void;
 }) {
   const [slotIndex, setSlotIndex] = useState(0);
   const slot = slots[Math.min(slotIndex, slots.length - 1)];
   return (
     <section className="card space-y-3 border-herb/40 p-4">
       <h2 className="font-sans text-sm font-bold">Per tancar la setmana</h2>
-      {proposals.length > 0 && (
+      {slots.length > 0 && (
         <div className="-mx-1 flex flex-wrap gap-1.5 px-1">
           {slots.map((s, i) => (
             <button key={`${s.day}${s.meal}`} className="chip !py-1 text-xs" data-active={i === slotIndex} onClick={() => setSlotIndex(i)}>
@@ -145,7 +174,13 @@ export function WeekendCard({
           ))}
         </div>
       )}
-      <Proposals proposals={proposals} title="Propostes per equilibrar" onAdd={(p) => onAdd(slot, p)} reasonFallback="Setmana" />
+      <Proposals
+        proposals={proposals}
+        title="Propostes per equilibrar"
+        onAdd={(p) => onAdd(slot, p)}
+        reasonFallback="Setmana"
+        onSearchOnline={() => onSearchOnline(slot, imbalance, describeImbalance(imbalance, "setmana"))}
+      />
     </section>
   );
 }

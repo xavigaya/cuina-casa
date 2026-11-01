@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Clock, Link2, Plus, Search, Users } from "lucide-react";
+import { Clock, Globe, Link2, Plus, Search, Users } from "lucide-react";
 import { useLiveTable } from "@/components/household";
 import { EmptyState, PageHeader, Sheet, Spinner } from "@/components/ui";
+import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
 import { IMPORT_DRAFT_KEY } from "@/lib/recipes";
 import { normalizeText } from "@/lib/sections";
 import { COURSES, courseInfo, type Course } from "@/lib/courses";
@@ -13,7 +14,8 @@ import type { Recipe } from "@/lib/types";
 
 export default function RecipesPage() {
   const router = useRouter();
-  const { rows: recipes, loading } = useLiveTable<Recipe>("recipes", { order: { column: "title" }, realtime: false });
+  const { rows: recipes, loading, reload } = useLiveTable<Recipe>("recipes", { order: { column: "title" }, realtime: false });
+  const [onlineReq, setOnlineReq] = useState<OnlineSearchRequest | null>(null);
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<string | null>(null);
   const [course, setCourse] = useState<Course | "base" | null>(null);
@@ -36,6 +38,9 @@ export default function RecipesPage() {
         subtitle={recipes.length ? `${recipes.length} receptes` : undefined}
         action={
           <div className="flex gap-2">
+            <button className="btn-secondary !px-3" onClick={() => setOnlineReq({})} aria-label="Cerca receptes a Internet">
+              <Globe className="size-5" />
+            </button>
             <button className="btn-secondary !px-3" onClick={() => setImportOpen(true)} aria-label="Importa des d'un enllaç">
               <Link2 className="size-5" />
             </button>
@@ -138,6 +143,8 @@ export default function RecipesPage() {
           ))}
         </ul>
       )}
+
+      <OnlineRecipesSheet request={onlineReq} onClose={() => setOnlineReq(null)} onImported={reload} />
 
       <ImportSheet
         open={importOpen}

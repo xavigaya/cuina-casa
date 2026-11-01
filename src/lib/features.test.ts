@@ -115,3 +115,100 @@ describe("cerca de fotos", () => {
     expect(parseCommons({})).toEqual([]);
   });
 });
+
+describe("importació tolerant amb JSON-LD mal format", async () => {
+  const { extractRecipeFromHtml, parseLenientJson } = await import("./recipe-import");
+  const { courseFromCategory } = await import("./courses");
+
+  it("llegeix receptes amb salts de línia dins dels textos (cas TV3)", () => {
+    const html = `<script type="application/ld+json">{
+      "@context": "https://schema.org/",
+      "@type": "Recipe",
+      "name": "Llenties estofades",
+      "recipeYield": "4",
+      "totalTime": "PT0H30M",
+      "cooktime": "PT0H20M",
+      "recipeCategory": "Primer Plat",
+      "image": "https://img.3cat.cat/llenties.jpg",
+      "recipeIngredient": ["300 g de llenties pardines", "1 cabeça d'alls
+", "1 ceba"],
+      "recipeInstructions": "Bulliu les llenties.
+Afegiu-hi el sofregit."
+    }</script>`;
+    const r = extractRecipeFromHtml(html, "https://www.3cat.cat/x")!;
+    expect(r.title).toBe("Llenties estofades");
+    expect(r.servings).toBe(4);
+    expect(r.prepMinutes).toBe(30);
+    expect(r.category).toBe("Primer Plat");
+    expect(r.ingredients.map((i) => i.name)).toEqual(["llenties pardines", "cabeça d'alls", "ceba"]);
+    expect(courseFromCategory(r.category)).toBe("primer");
+  });
+
+  it("corregeix comes sobrants i comentaris", () => {
+    expect(parseLenientJson('{\n\t, "a": [1, 2, ], // nota\n "b": "x" }')).toEqual({ a: [1, 2], b: "x" });
+    expect(parseLenientJson("{ això no és json")).toBeUndefined();
+  });
+
+  it("extreu els camps principals d'un bloc impossible de llegir (cas Javirecetas)", () => {
+    const html = `<script type="application/ld+json">{
+\t@context: "https://schema.org",
+\t"@type": "Recipe",
+\t"name": "Sopa de Calabaza Cl\\u00e1sica",
+\t"image": { "@type": "ImageObject", "url": "https://www.javirecetas.com/sopa.jpg" },
+\t"recipeYield": "4 raciones",
+\t"recipeCategory": "Primeros",
+\t"recipeIngredient": ["1 kg de calabaza", "1 l de caldo de pollo", "1 cucharadita de cúrcuma"],
+\t"recipeInstructions": [{"@type": "HowToStep", "text": "Cortar la calabaza."}, {"@type": "HowToStep", "text": "Hervir."}]
+}</script>`;
+    const r = extractRecipeFromHtml(html, "https://www.javirecetas.com/sopa")!;
+    expect(r.title).toBe("Sopa de Calabaza Clásica");
+    expect(r.imageUrl).toBe("https://www.javirecetas.com/sopa.jpg");
+    expect(r.servings).toBe(4);
+    expect(r.ingredients).toHaveLength(3);
+    expect(r.ingredients[0]).toMatchObject({ quantity: 1, unit: "kg", name: "calabaza" });
+    expect(r.instructions).toBe("Cortar la calabaza.\nHervir.");
+    expect(courseFromCategory(r.category)).toBe("primer");
+  });
+});
+
+describe("cerca de receptes a webs", async () => {
+  const { SITES, tv3Slug, queriesForImbalance } = await import("./recipe-sites");
+  const site = (id: string) => SITES.find((s) => s.id === id)!;
+  const imb = (over: object) => ({ needVeg: false, tooMuchGrain: false, refined: false, needProtein: false, tooMuchProtein: false, missingProteins: [], tooMuchRedMeat: false, ...over });
+
+  it("tradueix termes a pàgines d'ingredient de Cuines (TV3)", () => {
+    expect(tv3Slug("crema de calabacín")).toBe("carbasso");
+    expect(tv3Slug("Merluza con verduras")).toBe("lluc");
+    expect(tv3Slug("garbanzos con espinacas")).toBe("espinacs");
+    expect(tv3Slug("quiche")).toBeNull();
+    expect(site("tv3").searchUrl("quiche")).toBeNull();
+    expect(site("tv3").searchUrl("lentejas")).toBe("https://www.3cat.cat/tv3/cuines/llentia/receptes/");
+  });
+
+  it("extreu adreces de receptes de cada web", () => {
+    expect(site("tv3").extractLinks('<a href="/tv3/cuines/recepta/llenties-estofades/9141/">x</a><a href="/tv3/cuines/recepta/llenties-estofades/9141/">')).toEqual([
+      "https://www.3cat.cat/tv3/cuines/recepta/llenties-estofades/9141/",
+    ]);
+    expect(site("cookpad").extractLinks('<a href="/es/recetas/26785527-lentejas">a</a><a href="/es/recetas/111">b</a>')).toEqual([
+      "https://cookpad.com/es/recetas/26785527",
+      "https://cookpad.com/es/recetas/111",
+    ]);
+    expect(
+      site("rechupete").extractLinks(
+        "https://www.abc.es/recetasderechupete/lentejas-estofadas/123/ https://www.abc.es/recetasderechupete/menu-semanal-economico/47186/",
+      ),
+    ).toEqual(["https://www.abc.es/recetasderechupete/lentejas-estofadas/123/"]);
+    expect(site("pequerecetas").extractLinks('[{"link":"https://www.pequerecetas.com/receta/chili/"},{"link":"https://altra.com/x"}]')).toEqual([
+      "https://www.pequerecetas.com/receta/chili/",
+    ]);
+    expect(site("javirecetas").extractLinks("<html>error</html>")).toEqual([]);
+  });
+
+  it("tria què buscar segons el desequilibri", () => {
+    expect(queriesForImbalance(imb({ needVeg: true, missingProteins: ["peix"] }))[0]).toBe("merluza con verduras");
+    expect(queriesForImbalance(imb({ missingProteins: ["llegum"] }))).toContain("lentejas con verduras");
+    expect(queriesForImbalance(imb({ needProtein: true, tooMuchRedMeat: true }))).toEqual(["pollo al horno"]);
+    expect(queriesForImbalance(imb({})).length).toBeGreaterThan(0);
+    expect(queriesForImbalance(imb({ needVeg: true, needProtein: true, missingProteins: ["peix", "llegum"] })).length).toBeLessThanOrEqual(3);
+  });
+});

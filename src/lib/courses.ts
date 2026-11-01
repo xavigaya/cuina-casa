@@ -14,3 +14,15 @@ export const COURSE_ORDER: Record<string, number> = Object.fromEntries(COURSES.m
 export function courseInfo(id: string | null | undefined) {
   return COURSES.find((c) => c.id === id) ?? null;
 }
+
+/** Tipus de plat a partir de la categoria que dona la web («Primer Plat», «Postres», «Segundo»…). */
+export function courseFromCategory(category: string | null | undefined): Course | null {
+  if (!category) return null;
+  const c = category.toLowerCase();
+  if (/postre|dolç|dulce|dessert|pastís|pastel|tarta/.test(c)) return "postres";
+  if (/plat únic|plato único|plat unic|plato unico/.test(c)) return "plat_unic";
+  if (/segon|segundo|principal|main/.test(c)) return "segon";
+  if (/primer|primero/.test(c)) return "primer";
+  if (/entrant|entrante|aperitiu|aperitivo|tapa|starter/.test(c)) return "entrant";
+  return null;
+}
