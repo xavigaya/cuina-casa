@@ -25,6 +25,9 @@ export default function SettingsPage() {
   const [servings, setServings] = useState(household.servings);
   const [warnDays, setWarnDays] = useState(household.expiry_warning_days);
   const [code, setCode] = useState(household.invite_code);
+  const [expiresAt, setExpiresAt] = useState<string | null>(household.invite_expires_at ?? null);
+  const expired = !!expiresAt && Date.parse(expiresAt) < Date.now();
+  const expiryText = expiresAt ? new Date(expiresAt).toLocaleDateString("ca", { day: "numeric", month: "long" }) : null;
   const [notif, setNotif] = useState(false);
   const [notifSupported, setNotifSupported] = useState(false);
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
@@ -88,7 +91,11 @@ export default function SettingsPage() {
   }
 
   async function share() {
-    const text = `Uneix-te a "${household.name}" a Cuina Casa amb el codi ${code}: ${publicSiteUrl()}`;
+    if (expired) {
+      toast(privileged ? "El codi ha caducat: renova'l abans de compartir-lo" : "El codi ha caducat: demana a una persona privilegiada que el renovi");
+      return;
+    }
+    const text = `Uneix-te a "${household.name}" a Cuina Casa amb el codi ${code}${expiryText ? ` (vàlid fins al ${expiryText})` : ""}: ${publicSiteUrl()}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "Cuina Casa", text });
@@ -102,7 +109,21 @@ export default function SettingsPage() {
   async function regenerate() {
     if (!confirm("El codi actual deixarà de funcionar. Vols crear-ne un de nou?")) return;
     const { data, error } = await supabase.rpc("regenerate_invite_code", { p_household: household.id });
-    if (!error && data) setCode(data as string);
+    if (!error && data) {
+      setCode(data as string);
+      setExpiresAt(new Date(Date.now() + 7 * 86400000).toISOString());
+      toast("Codi nou, vàlid 7 dies");
+    }
+  }
+
+  async function extend() {
+    const { data, error } = await supabase.rpc("extend_invite_code", { p_household: household.id });
+    if (error) {
+      toast(/function|schema cache/i.test(error.message) ? "Cal executar la migració 0010 a Supabase" : error.message);
+      return;
+    }
+    setExpiresAt(data as string);
+    toast("Codi renovat per 7 dies més");
   }
 
   async function toggleNotifications() {
@@ -127,7 +148,10 @@ export default function SettingsPage() {
     await refresh();
     if (confirm(`${who} ja no és a la llar. Vols canviar el codi d'invitació perquè no hi pugui tornar a entrar?`)) {
       const { data } = await supabase.rpc("regenerate_invite_code", { p_household: household.id });
-      if (data) setCode(data as string);
+      if (data) {
+        setCode(data as string);
+        setExpiresAt(new Date(Date.now() + 7 * 86400000).toISOString());
+      }
       toast("Codi d'invitació canviat");
     }
   }
@@ -249,7 +273,17 @@ export default function SettingsPage() {
           </div>
           <div className="rounded-2xl bg-paper p-4 text-center">
             <p className="text-sm text-muted">Codi per convidar algú de casa</p>
-            <p className="my-2 font-mono text-3xl font-bold tracking-[0.25em]">{code}</p>
+            <p className={`my-2 font-mono text-3xl font-bold tracking-[0.2em] ${expired ? "text-muted line-through" : ""}`}>{code}</p>
+            {expiryText && (
+              <p className={`mb-3 text-xs ${expired ? "font-semibold text-tomato" : "text-muted"}`}>
+                {expired ? `Va caducar el ${expiryText}` : `Vàlid fins al ${expiryText}`}
+                {privileged && (
+                  <button className="ml-2 font-semibold text-tomato underline-offset-2 hover:underline" onClick={extend}>
+                    {expired ? "Renova'l" : "Allarga'l"}
+                  </button>
+                )}
+              </p>
+            )}
             <div className="flex justify-center gap-2">
               <button className="btn-primary" onClick={share}>
                 <Share2 className="size-4" /> Comparteix
@@ -271,7 +305,10 @@ export default function SettingsPage() {
               )}
             </div>
           </div>
-          <p className="text-xs text-muted">Cada persona entra amb el seu compte de Google i, la primera vegada, escriu aquest codi.</p>
+          <p className="text-xs text-muted">
+            Cada persona entra amb el seu compte de Google i, la primera vegada, escriu aquest codi. Els codis caduquen als 7 dies perquè no
+            circulin per sempre.
+          </p>
         </section>
 
         <Link href="/registre" className="card flex items-center gap-3 p-5">

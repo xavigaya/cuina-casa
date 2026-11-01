@@ -5,6 +5,8 @@ export interface Household {
   name: string;
   servings: number;
   invite_code: string;
+  /** quan caduca el codi d'invitació (migració 0010) */
+  invite_expires_at?: string | null;
   expiry_warning_days: number;
 }
 

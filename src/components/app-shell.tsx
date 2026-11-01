@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { BookOpen, CalendarDays, History, Home, Package, Settings, ShoppingCart } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { refreshPushKey } from "@/lib/push-client";
 import { useHousehold } from "./household";
 import { Toaster } from "./ui";
 import { PublicUrlBanner } from "./public-url-banner";
@@ -19,6 +20,9 @@ const NAV = [
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { household } = useHousehold();
+  useEffect(() => {
+    refreshPushKey(household.id).catch(() => {});
+  }, [household.id]);
   const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
   return (

@@ -97,3 +97,30 @@ export function noticeListAdded(householdId: string, names: string[]) {
   listTimer = setTimeout(flushListNotice, 20000);
   if (typeof window !== "undefined") window.addEventListener("pagehide", flushListNotice, { once: true });
 }
+
+function sameKey(a: ArrayBuffer | null | undefined, b: Uint8Array): boolean {
+  if (!a) return false;
+  const x = new Uint8Array(a);
+  return x.length === b.length && x.every((v, i) => v === b[i]);
+}
+
+/**
+ * Si s'han canviat les claus d'avisos a Vercel, les subscripcions antigues ja
+ * no funcionen: aquest mòbil es torna a subscriure sol amb la clau nova i
+ * conserva les preferències.
+ */
+export async function refreshPushKey(householdId: string): Promise<void> {
+  if (!pushSupported() || !pushConfigured || Notification.permission !== "granted") return;
+  const reg = await registration();
+  const sub = await reg?.pushManager.getSubscription();
+  if (!reg || !sub) return;
+  const key = urlBase64ToUint8Array(VAPID_PUBLIC);
+  if (sameKey(sub.options.applicationServerKey, key)) return;
+  const supabase = supabaseBrowser();
+  const { data } = await supabase.from("push_subscriptions").select("prefs").eq("endpoint", sub.endpoint).maybeSingle();
+  if (!data) return; // aquest mòbil no tenia els avisos activats a l'app
+  const prefs = { ...DEFAULT_PUSH_PREFS, ...((data as { prefs: Partial<PushPrefs> }).prefs ?? {}) };
+  await supabase.from("push_subscriptions").delete().eq("endpoint", sub.endpoint);
+  await sub.unsubscribe().catch(() => {});
+  await enablePush(householdId, prefs);
+}

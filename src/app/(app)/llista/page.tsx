@@ -762,7 +762,7 @@ function EditItemForm({
         <label className="label" htmlFor="nota">
           Nota
         </label>
-        <input id="nota" className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Marca, mida…" />
+        <input id="nota" className="input" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Marca, mida…" maxLength={300} />
       </div>
       <fieldset>
         <legend className="label">Preu aproximat (opcional)</legend>

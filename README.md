@@ -142,7 +142,10 @@ Altres mesures:
 - **Rutes del servidor només per a membres**: importar receptes, cercar, traduir o baixar fotos exigeix ser membre d'una llar, no només tenir un compte de Google.
 - **Descàrregues segures**: les adreces que escriu l'usuari es comproven a cada connexió i redirecció (només http/https i ports web, cap IP interna) i es tallen si superen la mida màxima (`src/lib/safe-fetch.ts`).
 - **Capçaleres de seguretat** (`next.config.ts`): política de contingut (CSP), l'app no es pot incrustar en altres webs, càmera només per a l'escàner, HSTS.
-- Opcional: una variable `CRON_SECRET` a Vercel fa que la tasca diària només la pugui cridar Vercel.
+- **Codis d'invitació** (migració 0010): de 10 caràcters, caduquen als 7 dies (un privilegiat els pot allargar o canviar a Ajustos) i, després de 8 intents amb codis que no existeixen, cal esperar una hora.
+- **Límits**: com a molt 30 avisos al mòbil cada 10 minuts per persona, i mides màximes a les notes, els passos, les etiquetes i les plantilles.
+- **Claus per a Vercel**: a Ajustos → Dades i còpies, un privilegiat pot generar claus d'avisos noves i el `CRON_SECRET`. Es creen al navegador i no s'envien enlloc. Si es canvien les claus d'avisos, cada mòbil es torna a subscriure sol en obrir l'app.
+- Una variable `CRON_SECRET` a Vercel fa que la tasca diària només la pugui cridar Vercel (Vercel l'envia sola a les tasques de `vercel.json`).
 
 ## Actualitzacions de la base de dades
 
@@ -159,5 +162,6 @@ Quan una nova versió afegeix un fitxer a `supabase/migrations/`, cal executar-l
 | `0007_supermercats_i_preus.sql` | Supermercats amb el seu ordre de seccions i preus aproximats dels productes |
 | `0008_avisos_i_preferencies.sql` | Avisos al mòbil, al·lèrgies i preferències de cada persona, i treure membres de la llar |
 | `0009_seguretat.sql` | Correccions de seguretat: funcions internes tancades, fotos només esborrables per l'autor o un privilegiat, enllaços http(s) |
+| `0010_codis_i_limits.sql` | Codis d'invitació que caduquen als 7 dies i límit d'intents, límit d'avisos per persona i mides màximes dels camps |
 
 La llista d'aliments de referència és a `supabase/data/aliments.tsv`. Si la modifiques, regenera l'SQL amb `python3 scripts/generar-aliments.py` i executa'l a Supabase (es pot repetir: actualitza els aliments existents).

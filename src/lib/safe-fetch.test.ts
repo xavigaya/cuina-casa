@@ -97,3 +97,18 @@ describe("enllaços de les receptes", async () => {
     expect(httpUrlOrNull("https://cookpad.com/es/recetas/1")).toBe("https://cookpad.com/es/recetas/1");
   });
 });
+
+describe("claus per a Vercel", () => {
+  it("genera claus d'avisos que web-push accepta i secrets aleatoris", async () => {
+    const { generateVapidKeys, generateSecret } = await import("./vercel-keys");
+    const webpush = (await import("web-push")).default;
+    const k = await generateVapidKeys();
+    expect(k.publicKey).toMatch(/^[A-Za-z0-9_-]{87}$/); // 65 bytes
+    expect(k.privateKey).toMatch(/^[A-Za-z0-9_-]{43}$/); // 32 bytes
+    expect(() => webpush.setVapidDetails("mailto:prova@exemple.cat", k.publicKey, k.privateKey)).not.toThrow();
+    const headers = webpush.getVapidHeaders("https://fcm.googleapis.com", "mailto:prova@exemple.cat", k.publicKey, k.privateKey, "aes128gcm");
+    expect(headers.Authorization).toMatch(/^vapid t=.+, k=/);
+    expect(generateSecret()).not.toBe(generateSecret());
+    expect(generateSecret()).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  });
+});

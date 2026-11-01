@@ -18,13 +18,17 @@ export function Onboarding({ user, onDone }: { user: User; onDone: () => void })
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const { error } =
+    const { data, error } =
       mode === "crear"
         ? await supabase.rpc("create_household", { p_name: name.trim(), p_display_name: displayName.trim() || null })
         : await supabase.rpc("join_household", { p_code: code.trim(), p_display_name: displayName.trim() || null });
     setBusy(false);
-    if (error) {
-      setError(error.message.includes("no vàlid") ? "Aquest codi no és vàlid. Revisa'l amb qui te l'ha passat." : error.message);
+    if (error || (mode !== "crear" && !data)) {
+      setError(
+        !error || error.message.includes("no vàlid")
+          ? "Aquest codi no és vàlid. Revisa'l amb qui te l'ha passat."
+          : error.message,
+      );
       return;
     }
     onDone();

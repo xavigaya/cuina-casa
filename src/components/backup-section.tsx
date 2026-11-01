@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Download, ImageOff, Upload } from "lucide-react";
 import { useHousehold, usePermissions } from "./household";
+import { VercelKeys } from "./vercel-keys";
 import { Sheet, Spinner, toast } from "./ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { PHOTO_BUCKET } from "@/lib/photo-upload-constants";
@@ -285,6 +286,8 @@ export function BackupSection() {
           </div>
         </div>
       )}
+
+      {privileged && <VercelKeys />}
 
       <Sheet open={!!importing} onClose={() => setImporting(null)} title="Importa una còpia">
         {importing && counts && (

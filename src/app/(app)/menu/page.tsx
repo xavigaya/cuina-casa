@@ -396,7 +396,7 @@ function PickRecipe({
 
       <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
-        <input className="input !pl-10" placeholder="Busca una recepta o escriu un plat…" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
+        <input className="input !pl-10" placeholder="Busca una recepta o escriu un plat…" maxLength={200} value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
       </div>
 
       {recipes.length > 0 && (
