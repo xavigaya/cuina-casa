@@ -1,5 +1,6 @@
 "use client";
 
+import { noticeListAdded } from "@/lib/push-client";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, CalendarDays, Lightbulb, ShoppingCart } from "lucide-react";
@@ -63,6 +64,7 @@ export default function HomePage() {
       toAdd.map((p) => ({ household_id: household.id, name: p.name, section: p.section, source: "rebost", added_by: user.id })),
     );
     toast(`${toAdd.length} productes afegits a la llista`);
+    noticeListAdded(household.id, toAdd.map((p) => p.name));
   }
 
   const hour = new Date().getHours();

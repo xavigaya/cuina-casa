@@ -143,8 +143,10 @@ export function describeEntry(e: ActivityEntry): string {
       return "ha canviat els ajustos de la llar";
     case "household_members":
       if (e.action === "insert") return "s'ha unit a la llar";
-      if (e.action === "delete") return "ha sortit de la llar";
+      if (e.action === "delete") return e.row_id && e.user_id !== e.row_id ? `ha tret ${name} de la llar` : "ha sortit de la llar";
       if (o && n && o.role !== n.role) return `ha fet ${n.role === "owner" ? "privilegiat" : "col·laborador"} ${name}`;
+      if (o && n && (JSON.stringify(o.allergies) !== JSON.stringify(n.allergies) || JSON.stringify(o.avoid) !== JSON.stringify(n.avoid)))
+        return e.user_id === e.row_id ? "ha canviat les seves preferències de menjar" : `ha canviat les preferències de menjar de ${name}`;
       return `ha canviat el nom a ${name}`;
   }
   return "ha fet un canvi";

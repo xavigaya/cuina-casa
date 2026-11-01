@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyFamily } from "@/lib/push-client";
 import { useCallback, useEffect, useState } from "react";
 import { CopyPlus, Replace, Save, Trash2 } from "lucide-react";
 import { useHousehold, usePermissions } from "./household";
@@ -101,6 +102,7 @@ export function MenuTemplatesSheet({
       return;
     }
     const added = ((data as { id: string }[] | null) ?? []).map((d) => d.id);
+    if (!perms.privileged && added.length) notifyFamily(household.id, { type: "proposta", what: "menu", label: t.name, count: added.length });
     onClose();
     onApplied();
     toast(perms.privileged ? `«${t.name}» aplicada (${added.length} plats)` : `«${t.name}» aplicada com a proposta (${added.length} plats)`, {

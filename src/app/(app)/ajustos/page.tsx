@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Apple, Bell, Tag, ChevronRight, Copy, History, LogOut, RefreshCw, Share2, ShieldCheck, Smartphone } from "lucide-react";
+import { Apple, Bell, DoorOpen, Salad, Tag, UserMinus, ChevronRight, Copy, History, LogOut, RefreshCw, Share2, ShieldCheck, Smartphone } from "lucide-react";
 import { useHousehold, usePermissions } from "@/components/household";
 import { canChangeRole, ROLE_HELP, ROLE_LABEL } from "@/lib/permissions";
 import type { Member, Role } from "@/lib/types";
+import { FoodPrefsSheet, foodPrefsSummary } from "@/components/food-prefs-sheet";
+import { PushSettings } from "@/components/push-settings";
 import { PageHeader, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { onNonPublicHost, publicSiteUrl } from "@/lib/site-url";
@@ -31,6 +33,7 @@ export default function SettingsPage() {
   const me = members.find((m) => m.user_id === user.id);
   const { privileged } = usePermissions();
   const [roleBusy, setRoleBusy] = useState<string | null>(null);
+  const [prefsFor, setPrefsFor] = useState<Member | null>(null);
   const [myName, setMyName] = useState(me?.display_name ?? "");
 
   useEffect(() => {
@@ -112,6 +115,36 @@ export default function SettingsPage() {
     }
   }
 
+  async function removeMember(m: Member) {
+    const who = m.display_name ?? "aquesta persona";
+    if (!confirm(`Treus ${who} de la llar? Deixarà de veure-hi res. El que ha afegit es queda.`)) return;
+    const { error } = await supabase.rpc("remove_member", { p_household: household.id, p_user: m.user_id });
+    if (error) {
+      toast(/function|schema cache/i.test(error.message) ? "Cal executar la migració 0008 a Supabase" : error.message);
+      return;
+    }
+    await refresh();
+    if (confirm(`${who} ja no és a la llar. Vols canviar el codi d'invitació perquè no hi pugui tornar a entrar?`)) {
+      const { data } = await supabase.rpc("regenerate_invite_code", { p_household: household.id });
+      if (data) setCode(data as string);
+      toast("Codi d'invitació canviat");
+    }
+  }
+
+  async function leave() {
+    if (!confirm(`Surts de «${household.name}»? Deixaràs de veure'n les dades; per tornar-hi caldrà el codi d'invitació.`)) return;
+    const { error } = await supabase.from("household_members").delete().eq("household_id", household.id).eq("user_id", user.id);
+    if (error) {
+      toast(error.message);
+      return;
+    }
+    try {
+      localStorage.removeItem("cuina-casa:llar");
+      localStorage.removeItem("cuina-casa:llar-desada");
+    } catch {}
+    window.location.href = "/";
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     window.location.href = "/login";
@@ -168,7 +201,15 @@ export default function SettingsPage() {
                     {m.user_id === user.id && <span className="ml-1 text-sm font-normal text-muted">(tu)</span>}
                   </span>
                   {!privileged && (
-                    <span className={`text-xs font-semibold ${m.role === "owner" ? "text-herb" : "text-muted"}`}>{ROLE_LABEL[m.role]}</span>
+                    <span className={`block text-xs font-semibold ${m.role === "owner" ? "text-herb" : "text-muted"}`}>{ROLE_LABEL[m.role]}</span>
+                  )}
+                  {(m.user_id === user.id || privileged) ? (
+                    <button className="block max-w-full truncate text-left text-xs text-muted underline-offset-2 hover:underline" onClick={() => setPrefsFor(m)}>
+                      <Salad className="mr-1 inline size-3.5 align-[-2px]" />
+                      {foodPrefsSummary(m) ?? "Afegeix al·lèrgies o el que no menja"}
+                    </button>
+                  ) : (
+                    foodPrefsSummary(m) && <span className="block truncate text-xs text-muted">{foodPrefsSummary(m)}</span>
                   )}
                 </span>
                 {privileged && (
@@ -185,6 +226,11 @@ export default function SettingsPage() {
                       </option>
                     ))}
                   </select>
+                )}
+                {privileged && m.user_id !== user.id && (
+                  <button className="grid size-9 shrink-0 place-items-center rounded-full text-muted" onClick={() => removeMember(m)} aria-label={`Treu ${m.display_name ?? "aquesta persona"} de la llar`} title="Treu de la llar">
+                    <UserMinus className="size-4" />
+                  </button>
                 )}
               </li>
             ))}
@@ -256,6 +302,7 @@ export default function SettingsPage() {
 
         <section className="card space-y-4 p-5">
           <h2 className="text-lg font-semibold">Al mòbil</h2>
+          <PushSettings />
           {notifSupported && (
             <div className="flex items-center gap-3">
               <Bell className="size-5 text-muted" />
@@ -311,8 +358,12 @@ export default function SettingsPage() {
           <button className="btn-secondary w-full" onClick={signOut}>
             <LogOut className="size-4" /> Tanca la sessió
           </button>
+          <button className="btn-ghost mt-2 w-full text-sm !text-tomato" onClick={leave}>
+            <DoorOpen className="size-4" /> Surt de la llar
+          </button>
         </section>
       </div>
+      <FoodPrefsSheet member={prefsFor} onClose={() => setPrefsFor(null)} />
     </>
   );
 }

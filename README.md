@@ -26,6 +26,9 @@ App web familiar per gestionar la cuina i les compres de casa. Funciona al mòbi
 - **Cerca de receptes a Internet** dins de webs concretes (Cuines de TV3, Cookpad, Recetas de Rechupete, PequeRecetas i Javirecetas), sense claus ni costos. Des del menú, quan cap recepta guardada no compensa un desequilibri, busca plats que el compensin i els valora segons el Plat de Harvard; també es pot buscar lliurement des de Receptes. Cada resultat es pot importar i afegir al menú amb un botó. La llista de webs és a `src/lib/recipe-sites.ts`: si alguna canvia el disseny i deixa de funcionar, la cerca continua amb les altres.
 - **Permisos per llar**: hi ha persones **privilegiades** (ho poden fer tot) i **col·laboradores**. Un col·laborador proposa receptes i plats del menú (queden marcats com a *proposta* fins que un privilegiat els aprova o els rebutja), afegeix coses a la llista, marca el que ha comprat i porta el rebost, però només edita o esborra el que ha afegit ell. Qui crea la llar és privilegiat; qui hi entra amb el codi comença com a col·laborador, i els permisos es canvien a Ajustos.
 - **Registre d'accions** amb qui ha fet cada canvi (receptes, menú, llista, rebost, aliments i llar) i botó **Desfés**: cadascú pot desfer les seves accions i els privilegiats, qualsevol. Una recepta esborrada per error torna sencera, amb els ingredients, els àpats del menú i els preelaborats on s'usava. Es guarden els últims 90 dies.
+- **Avisos de la família al mòbil** (encara que l'app estigui tancada): quan algú afegeix coses a la llista, quan hi ha propostes per revisar (als privilegiats) i quan aproven o rebutgen una proposta teva. Cada mòbil tria quins vol rebre a Ajustos → Al mòbil. Cal configurar les claus VAPID (vegeu més avall).
+- **Al·lèrgies i preferències** de cada persona (els 14 al·lèrgens de la UE, altres ingredients i el que no menja): les receptes, el llistat, el menú i el selector de plats avisen quan un plat en porta, també dins dels preelaborats. És orientatiu: cal llegir sempre les etiquetes.
+- **Treure algú de la llar** (privilegiats) i **sortir de la llar**, amb l'opció de canviar el codi d'invitació.
 - **Avisos de caducitat** a la pantalla d'inici i, opcionalment, com a notificació del mòbil.
 - **Escaneig de codis de barres** amb la càmera, amb cerca a [Open Food Facts](https://world.openfoodfacts.org) i memòria dels productes de casa.
 - **Instal·lable** (PWA) i amb còpia local de la llista i el rebost per consultar-les sense cobertura.
@@ -71,6 +74,16 @@ Calen tres coses: un projecte de Supabase, l'inici de sessió de Google i la pub
    - `NEXT_PUBLIC_SUPABASE_URL` → la Project URL
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` → la clau anon
 4. Prem **Deploy**. En acabar tindràs una adreça com `https://cuina-casa.vercel.app`.
+
+### Avisos al mòbil (opcional)
+
+Per enviar avisos al mòbil calen unes claus VAPID (gratuïtes, no depenen de cap servei de pagament). Es generen un sol cop amb `npx web-push generate-vapid-keys` i s'afegeixen a **Vercel → Settings → Environment Variables** (mai al codi):
+
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY` → la clau pública
+- `VAPID_PRIVATE_KEY` → la clau privada
+- `VAPID_SUBJECT` (opcional) → `mailto:` amb el teu correu
+
+Després cal tornar a publicar (Deployments → Redeploy). A l'iPhone els avisos només funcionen amb l'app instal·lada a la pantalla d'inici (iOS 16.4 o posterior).
 
 ### 4. Dir a Supabase quina és l'adreça de l'app
 
@@ -133,5 +146,6 @@ Quan una nova versió afegeix un fitxer a `supabase/migrations/`, cal executar-l
 | `0005_permisos_i_registre.sql` | Permisos per llar (privilegiat i col·laborador), propostes de receptes i menú, registre d'accions i desfer |
 | `0006_plantilles_menu.sql` | Plantilles de menú setmanal |
 | `0007_supermercats_i_preus.sql` | Supermercats amb el seu ordre de seccions i preus aproximats dels productes |
+| `0008_avisos_i_preferencies.sql` | Avisos al mòbil, al·lèrgies i preferències de cada persona, i treure membres de la llar |
 
 La llista d'aliments de referència és a `supabase/data/aliments.tsv`. Si la modifiques, regenera l'SQL amb `python3 scripts/generar-aliments.py` i executa'l a Supabase (es pot repetir: actualitza els aliments existents).

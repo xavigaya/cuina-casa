@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyFamily } from "@/lib/push-client";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Check, CheckCheck, ChevronLeft, LayoutTemplate, ChevronRight, Plus, Search, ShoppingCart, Users, X } from "lucide-react";
@@ -16,10 +17,12 @@ import { MEALS, type Meal, type MealPlanEntry, type Recipe } from "@/lib/types";
 import { useNutrition } from "@/lib/use-nutrition";
 import { analyzeWeek } from "@/lib/menu-analysis";
 import type { Proposal } from "@/lib/harvard";
+import type { DietConflict } from "@/lib/diet";
 import { DayFooter, WeekSummary, WeekendCard } from "@/components/menu-nutrition";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
 import { MenuTemplatesSheet } from "@/components/menu-templates";
 import { WeekCost } from "@/components/week-cost";
+import { DietBadge, useDietCheck } from "@/components/diet";
 
 type Entry = MealPlanEntry & { recipes: Pick<Recipe, "id" | "title" | "servings" | "image_url" | "course"> | null };
 
@@ -44,6 +47,7 @@ export default function MenuPage() {
   const [busy, setBusy] = useState(false);
   const [showBreakfast, setShowBreakfast] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const diet = useDietCheck();
   const recipeIds = useMemo(() => new Set(recipes.map((r) => r.id)), [recipes]);
   const nutrition = useNutrition(household.id);
   const [onlineReq, setOnlineReq] = useState<OnlineSearchRequest | null>(null);
@@ -63,6 +67,8 @@ export default function MenuPage() {
       .from("meal_plan")
       .insert(proposal.recipes.map((r) => ({ household_id: household.id, day, meal, recipe_id: r.id })));
     toast(error ? "No s'ha pogut afegir" : `${perms.privileged ? "Afegit al" : "Proposat per al"} ${MEALS.find((m) => m.id === meal)?.label.toLowerCase()}`);
+    if (!error && !perms.privileged)
+      notifyFamily(household.id, { type: "proposta", what: "menu", label: proposal.recipes.map((r) => r.title).join(" i "), count: proposal.recipes.length });
     reload();
   }
 
@@ -88,6 +94,16 @@ export default function MenuPage() {
     setRows((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, status: "aprovada" } : e)));
     const err = await setStatus("meal_plan", ids, "aprovada");
     toast(err ? "No s'ha pogut aprovar" : ids.length > 1 ? `${ids.length} propostes aprovades` : "Proposta aprovada");
+    if (!err) {
+      // Un avís a cada persona que havia fet propostes
+      const byAuthor = new Map<string, Entry[]>();
+      for (const e of entries.filter((x) => ids.includes(x.id) && x.created_by && x.created_by !== user.id)) {
+        byAuthor.set(e.created_by!, [...(byAuthor.get(e.created_by!) ?? []), e]);
+      }
+      for (const [to, list] of byAuthor) {
+        notifyFamily(household.id, { type: "resposta", what: "menu", approved: true, label: list[0].recipes?.title ?? list[0].note ?? "plat", to, count: list.length });
+      }
+    }
     reload();
   }
 
@@ -109,7 +125,11 @@ export default function MenuPage() {
     setSlot(null);
     const { error } = await supabase.from("meal_plan").insert({ household_id: household.id, day: s.day, meal: s.meal, ...values });
     if (error) toast("No s'ha pogut afegir");
-    else if (!perms.privileged) toast("Proposta afegida: una persona privilegiada l'ha d'aprovar");
+    else if (!perms.privileged) {
+      toast("Proposta afegida: una persona privilegiada l'ha d'aprovar");
+      const label = recipes.find((r) => r.id === values.recipe_id)?.title ?? values.note ?? "plat";
+      notifyFamily(household.id, { type: "proposta", what: "menu", label });
+    }
     reload();
   }
 
@@ -122,6 +142,9 @@ export default function MenuPage() {
       return;
     }
     const rejected = isProposal(e) && e.created_by !== user.id;
+    if (rejected && e.created_by) {
+      notifyFamily(household.id, { type: "resposta", what: "menu", approved: false, label: e.recipes?.title ?? e.note ?? "plat", to: e.created_by });
+    }
     toast(rejected ? "Proposta rebutjada" : "Tret del menú", {
       label: "Desfés",
       run: async () => {
@@ -229,6 +252,9 @@ export default function MenuPage() {
                                   )}
                                   {e.recipes.title}
                                 </Link>
+                              ) : null}
+                              {e.recipes ? (
+                                <DietBadge conflicts={diet.conflictsFor(e.recipes.id)} />
                               ) : (
                                 <Link
                                   href={e.note ? `/receptes/nova?plat=${encodeURIComponent(e.note)}` : "#"}
@@ -325,7 +351,7 @@ export default function MenuPage() {
       />
 
       <Sheet open={!!slot} onClose={() => setSlot(null)} title={slot ? `${MEALS.find((m) => m.id === slot.meal)?.label} · ${formatShortDate(slot.day)}` : ""}>
-        {slot && <PickRecipe key={`${slot.day}${slot.meal}`} recipes={recipes} defaultServings={household.servings} onPick={addEntry} />}
+        {slot && <PickRecipe key={`${slot.day}${slot.meal}`} recipes={recipes} defaultServings={household.servings} onPick={addEntry} conflictsFor={diet.conflictsFor} />}
       </Sheet>
     </>
   );
@@ -335,9 +361,11 @@ function PickRecipe({
   recipes,
   defaultServings,
   onPick,
+  conflictsFor,
 }: {
   recipes: Recipe[];
   defaultServings: number;
+  conflictsFor: (id: string) => DietConflict[];
   onPick: (v: { recipe_id: string | null; note: string | null; servings: number | null }) => void;
 }) {
   const [query, setQuery] = useState("");
@@ -419,6 +447,13 @@ function PickRecipe({
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium">{r.title}</span>
                   {courseInfo(r.course) && <span className="text-xs text-muted">{courseInfo(r.course)!.label}</span>}
+                  {conflictsFor(r.id).length > 0 && (
+                    <span className={`block truncate text-xs ${conflictsFor(r.id).some((c) => c.kind === "allergia") ? "text-tomato" : "text-muted"}`}>
+                      {conflictsFor(r.id)
+                        .map((c) => (c.kind === "allergia" ? `⚠️ ${c.person}: ${c.label.toLowerCase()}` : `${c.person} no menja ${c.label}`))
+                        .join(" · ")}
+                    </span>
+                  )}
                 </span>
               </button>
             </li>

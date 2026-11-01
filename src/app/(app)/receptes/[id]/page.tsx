@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyFamily } from "@/lib/push-client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
@@ -10,6 +11,7 @@ import { setStatus, undoLatest } from "@/lib/proposals";
 import { Sheet, Spinner, toast } from "@/components/ui";
 import { PhotoSearchSheet } from "@/components/photo-search";
 import { CookedSheet } from "@/components/cooked-sheet";
+import { DietWarnings, useDietCheck } from "@/components/diet";
 import { RecipeNutritionCard } from "@/components/nutrition";
 import { MissingDataHelper } from "@/components/missing-data";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
@@ -45,6 +47,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [translating, setTranslating] = useState(false);
   const [onlineReq, setOnlineReq] = useState<OnlineSearchRequest | null>(null);
   const nutrition = useNutrition(household.id);
+  const diet = useDietCheck();
 
   useEffect(() => {
     loadRecipe(id).then(async (r) => {
@@ -204,6 +207,9 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       toast("No s'ha pogut esborrar");
       return;
     }
+    if (reject && r.created_by && r.created_by !== user.id) {
+      notifyFamily(household.id, { type: "resposta", what: "recepta", approved: false, label: r.title, to: r.created_by });
+    }
     // La foto no s'esborra del magatzem: així, si es desfà, la recepta torna sencera
     toast(reject ? "Proposta rebutjada" : "Recepta esborrada", {
       label: "Desfés",
@@ -225,6 +231,9 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
     else {
       setRecipe({ ...recipe!, status: "aprovada" });
       toast("Recepta aprovada");
+      if (recipe!.created_by && recipe!.created_by !== user.id) {
+        notifyFamily(household.id, { type: "resposta", what: "recepta", approved: true, label: recipe!.title, to: recipe!.created_by });
+      }
     }
   }
 
@@ -314,6 +323,8 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           </a>
         )}
       </div>
+
+      <DietWarnings conflicts={diet.conflictsFor(recipe.id)} />
 
       {editable && missingParts.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-saffron/60 bg-saffron-soft/60 p-3 text-sm">
@@ -498,6 +509,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             recipe_id: recipe.id,
             servings: servings === household.servings ? null : servings,
           });
+          if (!error && !perms.privileged) notifyFamily(household.id, { type: "proposta", what: "menu", label: recipe.title });
           toast(
             error
               ? "No s'ha pogut afegir al menú"

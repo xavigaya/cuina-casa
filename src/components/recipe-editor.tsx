@@ -1,5 +1,6 @@
 "use client";
 
+import { notifyFamily } from "@/lib/push-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ImagePlus, Link2, Plus, Trash2, X } from "lucide-react";
@@ -70,6 +71,7 @@ export function RecipeEditor({
       const id = await saveRecipe(household.id, user.id, { ...draft, tags, instructions }, linkable, recipeId);
       // La foto antiga es conserva al magatzem perquè l'edició es pugui desfer des del Registre
       toast(privileged ? "Recepta desada" : "Desada com a proposta: una persona privilegiada l'ha d'aprovar");
+      if (!privileged) notifyFamily(household.id, { type: "proposta", what: "recepta", label: draft.title });
       if (onSaved) await onSaved(id).catch(() => {});
       router.replace(`/receptes/${id}`);
     } catch (err) {

@@ -1,4 +1,5 @@
 import { supabaseBrowser } from "./supabase/client";
+import { noticeListAdded } from "./push-client";
 import { computeShoppingNeeds, expandPlannedMeals, type NeededItem, type RecipeNode } from "./shopping";
 import type { Household, PantryItem, ShoppingItem } from "./types";
 
@@ -57,6 +58,7 @@ export async function addMissingToShoppingList(
       })),
     );
     if (error) throw error;
+    noticeListAdded(household.id, needs.map((n) => n.name));
   }
   return needs;
 }

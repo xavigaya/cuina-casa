@@ -11,6 +11,7 @@ import { issuesLabel, needsReview, recipeIssues, type RecipeIssues } from "@/lib
 import { EmptyState, PageHeader, Sheet, Spinner } from "@/components/ui";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
 import { DishesWithoutRecipe } from "@/components/dishes-without-recipe";
+import { DietBadge, useDietCheck } from "@/components/diet";
 import { IMPORT_DRAFT_KEY } from "@/lib/recipes";
 import { normalizeText } from "@/lib/sections";
 import { COURSES, courseInfo, type Course } from "@/lib/courses";
@@ -27,6 +28,7 @@ export default function RecipesPage() {
   const [onlyReview, setOnlyReview] = useState(false);
   const [onlyProposals, setOnlyProposals] = useState(false);
   const perms = usePermissions();
+  const diet = useDietCheck();
   const { household } = useHousehold();
   const nutrition = useNutrition(household.id);
 
@@ -172,7 +174,10 @@ export default function RecipesPage() {
                   )}
                 </div>
                 <div className="p-3">
-                  <p className="line-clamp-2 font-semibold leading-snug">{r.title}</p>
+                  <p className="flex items-start justify-between gap-1">
+                    <span className="line-clamp-2 font-semibold leading-snug">{r.title}</span>
+                    <DietBadge conflicts={diet.conflictsFor(r.id)} />
+                  </p>
                   <p className="mt-1 flex items-center gap-3 text-xs text-muted">
                     <span className="flex items-center gap-1">
                       <Users className="size-3" /> {r.servings}

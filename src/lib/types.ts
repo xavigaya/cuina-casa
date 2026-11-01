@@ -14,6 +14,10 @@ export interface Member {
   display_name: string | null;
   /** owner = privilegiat (ho pot fer tot) · member = col·laborador */
   role: Role;
+  /** al·lèrgens o ingredients que no pot menjar (migració 0008) */
+  allergies?: string[];
+  /** ingredients que no menja o no li agraden */
+  avoid?: string[];
 }
 
 export type Role = "owner" | "member";

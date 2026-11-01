@@ -57,6 +57,27 @@ self.addEventListener("fetch", (event) => {
   }
 });
 
+// Avisos de la família (Web Push): llista de la compra, propostes i respostes
+self.addEventListener("push", (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch (e) {
+    data = { title: "Cuina Casa", body: event.data ? event.data.text() : "" };
+  }
+  const title = data.title || "Cuina Casa";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/badge.png",
+      tag: data.tag || "cuina-casa",
+      renotify: true,
+      data: { url: data.url || "/" },
+    }),
+  );
+});
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || "/";

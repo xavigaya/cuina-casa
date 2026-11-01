@@ -1,5 +1,6 @@
 "use client";
 
+import { noticeListAdded } from "@/lib/push-client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, ChevronDown, CloudOff, PackagePlus, Pencil, Plus, RotateCcw, ScanBarcode, Store as StoreIcon, Trash2, X } from "lucide-react";
@@ -83,7 +84,10 @@ export default function ShoppingListPage() {
           : await supabase.from("shopping_items").update(op.values).eq("id", op.id);
       if (error && isNetworkError(error)) break; // encara sense connexió: ho tornarem a provar
       if (error) toast(`No s'ha pogut desar un canvi de la llista: ${error.message}`);
-      else sent++;
+      else {
+        sent++;
+        if (op.kind === "insert") noticeListAdded(household.id, [op.row.name]);
+      }
       setQueue(rest);
     }
     flushing.current = false;
@@ -237,6 +241,7 @@ export default function ShoppingListPage() {
       toast("No s'ha pogut afegir");
     } else {
       setRows((prev) => prev.map((i) => (i.id === tempId ? (data as ShoppingItem) : i)));
+      noticeListAdded(household.id, [input.name]);
     }
   }
 
