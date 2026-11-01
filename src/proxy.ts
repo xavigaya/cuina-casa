@@ -42,7 +42,7 @@ export async function proxy(request: NextRequest) {
     url.search = "";
     return NextResponse.redirect(url);
   }
-  if (!user && path.startsWith("/api/")) {
+  if (!user && !isPublic && path.startsWith("/api/")) {
     return NextResponse.json({ error: "Cal iniciar sessió" }, { status: 401 });
   }
   if (user && path === "/login") {
