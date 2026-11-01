@@ -6,7 +6,7 @@ import { Apple, Bell, ChevronRight, Copy, LogOut, RefreshCw, Share2, Smartphone 
 import { useHousehold } from "@/components/household";
 import { PageHeader, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { publicSiteUrl } from "@/lib/site-url";
+import { onNonPublicHost, publicSiteUrl } from "@/lib/site-url";
 import { disableNotifications, enableNotifications, notificationsEnabled, notificationsSupported } from "@/lib/notifications";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -25,6 +25,7 @@ export default function SettingsPage() {
   const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [standalone, setStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [nonPublic, setNonPublic] = useState(false);
   const me = members.find((m) => m.user_id === user.id);
   const [myName, setMyName] = useState(me?.display_name ?? "");
 
@@ -33,6 +34,7 @@ export default function SettingsPage() {
     setNotifSupported(notificationsSupported());
     setStandalone(window.matchMedia("(display-mode: standalone)").matches);
     setIsIOS(/iphone|ipad|ipod/i.test(navigator.userAgent));
+    setNonPublic(onNonPublicHost());
     const onPrompt = (e: Event) => {
       e.preventDefault();
       setInstallEvent(e as BeforeInstallPromptEvent);
@@ -196,7 +198,15 @@ export default function SettingsPage() {
             <Smartphone className="mt-0.5 size-5 text-muted" />
             <div className="flex-1">
               <p className="font-medium">Instal·la l'app</p>
-              {standalone ? (
+              {nonPublic ? (
+                <p className="text-sm text-muted">
+                  Des d'aquesta adreça no es pot instal·lar.{" "}
+                  <a href={publicSiteUrl()} className="font-semibold text-tomato underline">
+                    Obre {publicSiteUrl().replace(/^https?:\/\//, "")}
+                  </a>{" "}
+                  i instal·la-la des d'allà.
+                </p>
+              ) : standalone ? (
                 <p className="text-sm text-muted">Ja la tens instal·lada. 👍</p>
               ) : installEvent ? (
                 <button

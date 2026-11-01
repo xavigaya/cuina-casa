@@ -427,3 +427,13 @@ describe("receptes que cal revisar", async () => {
     expect(issuesLabel(ok)).toBeNull();
   });
 });
+
+describe("adreces privades de Vercel", async () => {
+  const { isPrivateVercelHost } = await import("./site-url");
+  it("distingeix l'adreça pública de les de desplegament", () => {
+    expect(isPrivateVercelHost("cuina-casa.vercel.app")).toBe(false);
+    expect(isPrivateVercelHost("cuina-casa-git-main-xavigayas-projects.vercel.app")).toBe(true);
+    expect(isPrivateVercelHost("cuina-casa-a1b2c3d4e-xavigayas-projects.vercel.app")).toBe(true);
+    expect(isPrivateVercelHost("localhost")).toBe(false);
+  });
+});

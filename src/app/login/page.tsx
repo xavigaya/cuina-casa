@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
 import { ConfigMissing } from "@/components/config-missing";
+import { PublicUrlBanner } from "@/components/public-url-banner";
 
 export default function LoginPage() {
   const [busy, setBusy] = useState(false);
@@ -25,6 +26,7 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center p-6 text-center">
+      <PublicUrlBanner />
       <div className="mb-4 text-6xl" aria-hidden>
         🍲
       </div>

@@ -6,6 +6,7 @@ import { BookOpen, CalendarDays, Home, Package, Settings, ShoppingCart } from "l
 import type { ReactNode } from "react";
 import { useHousehold } from "./household";
 import { Toaster } from "./ui";
+import { PublicUrlBanner } from "./public-url-banner";
 
 const NAV = [
   { href: "/", label: "Inici", icon: Home },
@@ -58,6 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
+        <PublicUrlBanner />
         <main className="mx-auto max-w-3xl px-4 pb-32 pt-3 lg:px-8 lg:pb-12 lg:pt-10">{children}</main>
       </div>
 
