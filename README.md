@@ -136,6 +136,14 @@ Cada taula té *Row Level Security*: una persona només pot llegir i modificar l
 
 Els permisos (privilegiat i col·laborador) també els fa complir la base de dades, no només l'app: polítiques per rol a receptes, ingredients, menú, llista i aliments, i disparadors que marquen com a proposta el que afegeix un col·laborador i impedeixen canviar-se el rol. El registre l'escriuen disparadors i només es pot desfer amb la funció `undo_actions`, que comprova qui ho demana.
 
+Altres mesures:
+
+- **Funcions de la base de dades tancades per defecte** (migració 0009): només es poden cridar les que l'app fa servir, i totes comproven qui ho demana. Si una migració nova crea una funció que l'app hagi de cridar, cal donar-li permís explícitament (`grant execute on function … to authenticated`).
+- **Rutes del servidor només per a membres**: importar receptes, cercar, traduir o baixar fotos exigeix ser membre d'una llar, no només tenir un compte de Google.
+- **Descàrregues segures**: les adreces que escriu l'usuari es comproven a cada connexió i redirecció (només http/https i ports web, cap IP interna) i es tallen si superen la mida màxima (`src/lib/safe-fetch.ts`).
+- **Capçaleres de seguretat** (`next.config.ts`): política de contingut (CSP), l'app no es pot incrustar en altres webs, càmera només per a l'escàner, HSTS.
+- Opcional: una variable `CRON_SECRET` a Vercel fa que la tasca diària només la pugui cridar Vercel.
+
 ## Actualitzacions de la base de dades
 
 Quan una nova versió afegeix un fitxer a `supabase/migrations/`, cal executar-lo una sola vegada a **Supabase → SQL Editor** (enganxar-lo sencer i prémer **Run**), per ordre de número.
@@ -150,5 +158,6 @@ Quan una nova versió afegeix un fitxer a `supabase/migrations/`, cal executar-l
 | `0006_plantilles_menu.sql` | Plantilles de menú setmanal |
 | `0007_supermercats_i_preus.sql` | Supermercats amb el seu ordre de seccions i preus aproximats dels productes |
 | `0008_avisos_i_preferencies.sql` | Avisos al mòbil, al·lèrgies i preferències de cada persona, i treure membres de la llar |
+| `0009_seguretat.sql` | Correccions de seguretat: funcions internes tancades, fotos només esborrables per l'autor o un privilegiat, enllaços http(s) |
 
 La llista d'aliments de referència és a `supabase/data/aliments.tsv`. Si la modifiques, regenera l'SQL amb `python3 scripts/generar-aliments.py` i executa'l a Supabase (es pot repetir: actualitza els aliments existents).

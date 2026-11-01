@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { extractRecipeFromHtml } from "./recipe-import";
+import { safeFetch } from "./safe-fetch";
 import type { OnlineRecipe } from "./online-recipes";
 import { SITES, matchesKeywords, queriesForImbalance, queryKeywords, relevantFirst } from "./recipe-sites";
 import { PROTEIN_KINDS, compensationScore, evaluatePlate, plateShares, proteinKinds, type Imbalance } from "./harvard";
@@ -14,14 +15,12 @@ const MAX_PAGES = 12;
 
 async function fetchText(url: string, timeout = 8000): Promise<string | null> {
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: { "User-Agent": UA, Accept: "text/html,application/json", "Accept-Language": "ca,es;q=0.9" },
-      signal: AbortSignal.timeout(timeout),
-      redirect: "follow",
+      timeoutMs: timeout,
+      maxBytes: 3_000_000,
     });
-    if (!res.ok) return null;
-    const text = await res.text();
-    return text.length > 3_000_000 ? null : text;
+    return res.ok ? res.text() : null;
   } catch {
     return null;
   }

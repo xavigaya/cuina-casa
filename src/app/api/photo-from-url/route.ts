@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { PHOTO_BUCKET } from "@/lib/photo-upload-constants";
 import { publicHttpUrl } from "@/lib/safe-url";
-import { supabaseServer } from "@/lib/supabase/server";
+import { SafeFetchError, safeFetch } from "@/lib/safe-fetch";
+import { requireMember } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -16,9 +17,9 @@ const MAX_BYTES = 20 * 1024 * 1024;
  * no deixar mostrar-la des d'altres llocs).
  */
 export async function POST(request: Request) {
-  const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Cal iniciar sessió" }, { status: 401 });
+  const access = await requireMember();
+  if (access instanceof NextResponse) return access;
+  const { supabase } = access;
 
   let householdId: string;
   let url: URL | null;
@@ -32,35 +33,37 @@ export async function POST(request: Request) {
   if (!url || !/^[0-9a-f-]{36}$/i.test(householdId)) {
     return NextResponse.json({ error: "L'enllaç no és vàlid" }, { status: 400 });
   }
+  // Abans de descarregar res, cal ser membre de la llar on es desarà la foto
+  const member = await requireMember(householdId);
+  if (member instanceof NextResponse) return member;
 
   // 1. Descàrrega (amb la pròpia web com a origen, perquè algunes ho exigeixen)
   let input: Buffer;
   try {
-    const res = await fetch(url, {
+    const res = await safeFetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0 (compatible; CuinaCasa/1.0; +https://github.com/xavigaya/cuina-casa)",
         Accept: "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8",
         Referer: `${url.origin}/`,
       },
-      redirect: "follow",
-      signal: AbortSignal.timeout(12000),
+      maxBytes: MAX_BYTES,
     });
     if (!res.ok) return NextResponse.json({ error: "descarrega", detail: `La web ha respost amb un error (${res.status})` }, { status: 502 });
     const type = res.headers.get("content-type") ?? "";
     if (type.includes("text/html")) {
       return NextResponse.json({ error: "no_imatge", detail: "L'enllaç és d'una pàgina web, no d'una imatge. Obre la imatge sola i copia'n l'adreça." }, { status: 422 });
     }
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.byteLength > MAX_BYTES) return NextResponse.json({ error: "massa_gran", detail: "La imatge és massa gran." }, { status: 413 });
-    input = buf;
-  } catch {
+    input = res.body;
+  } catch (e) {
+    if (e instanceof SafeFetchError && e.reason === "mida") return NextResponse.json({ error: "massa_gran", detail: "La imatge és massa gran." }, { status: 413 });
+    if (e instanceof SafeFetchError && e.reason === "adreça") return NextResponse.json({ error: "no_imatge", detail: "Aquest enllaç no es pot fer servir." }, { status: 400 });
     return NextResponse.json({ error: "descarrega", detail: "No s'ha pogut descarregar la imatge." }, { status: 502 });
   }
 
   // 2. Reducció i conversió
   let output: Buffer;
   try {
-    output = await sharp(input, { failOn: "none" })
+    output = await sharp(input, { failOn: "none", limitInputPixels: 60_000_000 })
       .rotate()
       .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })
       .webp({ quality: 82 })

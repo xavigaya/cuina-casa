@@ -317,7 +317,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             {t}
           </span>
         ))}
-        {recipe.source_url && (
+        {recipe.source_url && /^https?:\/\//i.test(recipe.source_url) && (
           <a href={recipe.source_url} target="_blank" rel="noreferrer" className="flex items-center gap-1 underline-offset-2 hover:underline">
             <ExternalLink className="size-4" /> {new URL(recipe.source_url).hostname.replace(/^www\./, "")}
           </a>

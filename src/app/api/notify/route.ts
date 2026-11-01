@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import webpush from "web-push";
-import { supabaseServer } from "@/lib/supabase/server";
+import { requireMember } from "@/lib/api-auth";
 import { buildPushMessage, parsePushEvent } from "@/lib/push-messages";
 
 export const runtime = "nodejs";
@@ -16,9 +16,9 @@ export async function POST(request: Request) {
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!publicKey || !privateKey) return NextResponse.json({ sent: 0, configured: false });
 
-  const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Cal iniciar sessió" }, { status: 401 });
+  const access = await requireMember();
+  if (access instanceof NextResponse) return access;
+  const { supabase } = access;
 
   let householdId = "";
   let event = null;

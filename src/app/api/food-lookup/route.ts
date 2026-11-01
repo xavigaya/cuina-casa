@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { proposalFromProducts, searchOffProducts, type FoodProposal } from "@/lib/food-lookup";
 import { translateLines } from "@/lib/translate-server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { requireMember } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
 /** Proposa valors nutricionals per a ingredients desconeguts (Open Food Facts). */
 export async function POST(request: Request) {
-  const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Cal iniciar sessió" }, { status: 401 });
+  const access = await requireMember();
+  if (access instanceof NextResponse) return access;
+  const { supabase } = access;
 
   let names: string[];
   try {

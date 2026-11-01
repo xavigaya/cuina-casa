@@ -128,6 +128,20 @@ export function resolveLink(
   return suggestLink(name, recipes);
 }
 
+/** Només enllaços http(s); la resta (javascript:, text qualsevol…) no es desa */
+export function httpUrlOrNull(raw: string | null | undefined): string | null {
+  const v = raw?.trim();
+  if (!v) return null;
+  const withScheme = /^[a-z][a-z0-9+.-]*:/i.test(v) ? v : /^[\w-]+(\.[\w-]+)+(\/|$)/.test(v) ? `https://${v}` : null;
+  if (!withScheme) return null;
+  try {
+    const u = new URL(withScheme);
+    return ["http:", "https:"].includes(u.protocol) && !/\s/.test(withScheme) ? u.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function saveRecipe(
   householdId: string,
   userId: string,
@@ -140,8 +154,8 @@ export async function saveRecipe(
     title: draft.title.trim(),
     servings: draft.servings,
     prep_minutes: draft.prep_minutes,
-    image_url: draft.image_url?.trim() || null,
-    source_url: draft.source_url?.trim() || null,
+    image_url: httpUrlOrNull(draft.image_url),
+    source_url: httpUrlOrNull(draft.source_url),
     instructions: splitSteps(draft.instructions).join("\n") || null,
     tags: draft.tags,
     course: draft.course,

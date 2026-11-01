@@ -169,7 +169,12 @@ export function planImport(
     for (const r of backup.recipes) {
       const id = idMap.get(String(r.id ?? ""));
       if (!id || !created.has(id)) continue;
-      plan.recipes.push({ ...pick(r, COLUMNS.recipes), id, household_id: householdId });
+      const row = pick(r, COLUMNS.recipes);
+      // Els enllaços han de ser http(s) (la base de dades rebutja la resta)
+      for (const c of ["source_url", "image_url"] as const) {
+        if (row[c] != null && !/^https?:\/\/\S+$/i.test(String(row[c]))) row[c] = null;
+      }
+      plan.recipes.push({ ...row, id, household_id: householdId });
       for (const ing of r.recipe_ingredients ?? []) {
         const sub = ing.sub_recipe_id ? idMap.get(String(ing.sub_recipe_id)) ?? null : null;
         plan.recipe_ingredients.push({ ...pick(ing, COLUMNS.recipe_ingredients), recipe_id: id, sub_recipe_id: sub === id ? null : sub });

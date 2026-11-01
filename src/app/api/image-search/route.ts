@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { searchImages } from "@/lib/image-search";
-import { supabaseServer } from "@/lib/supabase/server";
+import { requireMember } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 /** Busca fotos de plats a Openverse i Wikimedia Commons. */
 export async function GET(request: Request) {
-  const supabase = await supabaseServer();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.json({ error: "Cal iniciar sessió" }, { status: 401 });
+  const access = await requireMember();
+  if (access instanceof NextResponse) return access;
+  const { supabase } = access;
 
   const q = new URL(request.url).searchParams.get("q")?.trim().slice(0, 100);
   if (!q) return NextResponse.json({ results: [] });

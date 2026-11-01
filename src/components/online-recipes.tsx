@@ -230,7 +230,7 @@ export function OnlineRecipeCard({
               {importing === r.url ? "Important…" : importLabel}
             </button>
           )}
-          <a href={r.url} target="_blank" rel="noreferrer" className="btn-secondary !px-3" aria-label="Obre la web original">
+          <a href={/^https?:\/\//i.test(r.url) ? r.url : undefined} target="_blank" rel="noreferrer" className="btn-secondary !px-3" aria-label="Obre la web original">
             <ExternalLink className="size-4" />
           </a>
         </div>
