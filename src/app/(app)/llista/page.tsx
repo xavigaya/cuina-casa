@@ -25,6 +25,7 @@ export default function ShoppingListPage() {
   const [scanning, setScanning] = useState(false);
   const [showChecked, setShowChecked] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [emptyOpen, setEmptyOpen] = useState(false);
 
   const pending = items.filter((i) => !i.checked);
   const checked = items.filter((i) => i.checked);
@@ -106,11 +107,38 @@ export default function ShoppingListPage() {
     }
   }
 
-  async function clearChecked() {
-    const ids = checked.map((i) => i.id);
+  /** Esborra productes de la llista i permet desfer-ho durant uns segons. */
+  async function removeItems(list: ShoppingItem[], message: string) {
+    if (!list.length) return;
+    const ids = list.map((i) => i.id);
     setRows((prev) => prev.filter((i) => !ids.includes(i.id)));
-    await supabase.from("shopping_items").delete().in("id", ids);
-    toast(`${ids.length} productes esborrats`);
+    const { error } = await supabase.from("shopping_items").delete().in("id", ids);
+    if (error) {
+      toast("No s'ha pogut buidar la llista");
+      setRows((prev) => [...prev, ...list]);
+      return;
+    }
+    toast(message, {
+      label: "Desfés",
+      run: async () => {
+        // Es tornen a crear amb les mateixes dades (i el mateix estat de «al carro»)
+        const { data } = await supabase
+          .from("shopping_items")
+          .insert(list.map(({ id: _id, ...rest }) => rest))
+          .select();
+        if (data) setRows((prev) => [...prev, ...(data as ShoppingItem[])]);
+      },
+    });
+  }
+
+  async function clearChecked() {
+    await removeItems(checked, `${checked.length} productes esborrats`);
+  }
+
+  async function emptyList(which: "carro" | "tot") {
+    setEmptyOpen(false);
+    if (which === "carro") await removeItems(checked, checked.length === 1 ? "S'ha buidat el carro (1 producte)" : `S'ha buidat el carro (${checked.length} productes)`);
+    else await removeItems(items, "S'ha buidat la llista de la compra");
   }
 
   /** Porta el que s'ha comprat a l'inventari i ho treu de la llista. */
@@ -188,6 +216,13 @@ export default function ShoppingListPage() {
       <PageHeader
         title="Llista de la compra"
         subtitle={pending.length ? `${pending.length} per comprar` : undefined}
+        action={
+          items.length > 0 && (
+            <button className="btn-secondary !px-3" onClick={() => setEmptyOpen(true)} aria-label="Buida la llista" title="Buida la llista">
+              <Trash2 className="size-5" />
+            </button>
+          )
+        }
       />
 
       <form onSubmit={quickAdd} className="sticky top-2 z-30 mb-5 flex gap-2">
@@ -294,6 +329,37 @@ export default function ShoppingListPage() {
           });
         }}
       />
+
+      <Sheet open={emptyOpen} onClose={() => setEmptyOpen(false)} title="Buidar la llista">
+        <div className="space-y-2">
+          {checked.length > 0 && (
+            <button className="btn-secondary w-full !justify-start !py-3 text-left" onClick={() => emptyList("carro")}>
+              <Check className="size-5 shrink-0 text-herb" />
+              <span>
+                <span className="block font-semibold">Buida només el carro</span>
+                <span className="block text-xs font-normal text-muted">
+                  Esborra {checked.length === 1 ? "el producte marcat" : `els ${checked.length} productes marcats`} i deixa la resta
+                </span>
+              </span>
+            </button>
+          )}
+          <button className="btn-secondary w-full !justify-start !py-3 text-left !text-tomato" onClick={() => emptyList("tot")}>
+            <Trash2 className="size-5 shrink-0" />
+            <span>
+              <span className="block font-semibold">Buida tota la llista</span>
+              <span className="block text-xs font-normal text-muted">
+                Esborra {items.length === 1 ? "l'únic producte" : `els ${items.length} productes`}, comprats o no
+              </span>
+            </span>
+          </button>
+          {checked.length > 0 && (
+            <p className="pt-1 text-xs text-muted">
+              Si ja has tornat del súper, fes servir millor «Al rebost»: afegeix el que has comprat a l'inventari i ho treu de la llista.
+            </p>
+          )}
+          <p className="text-xs text-muted">Després tindràs uns segons per desfer-ho.</p>
+        </div>
+      </Sheet>
 
       <BarcodeScanner open={scanning} onClose={() => setScanning(false)} onDetected={onDetected} />
     </>
