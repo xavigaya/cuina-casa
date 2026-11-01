@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarPlus, Check, Clock, ExternalLink, Minus, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Check, Clock, ExternalLink, ImagePlus, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useHousehold } from "@/components/household";
 import { Sheet, Spinner, toast } from "@/components/ui";
+import { PhotoSearchSheet } from "@/components/photo-search";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { loadRecipe } from "@/lib/recipes";
+import { loadRecipe, splitSteps } from "@/lib/recipes";
+import { courseInfo } from "@/lib/courses";
 import { ingredientKey } from "@/lib/ingredients";
 import { addMissingToShoppingList } from "@/lib/plan-actions";
 import { addDays, dayName, formatShortDate, toISODate } from "@/lib/dates";
@@ -23,13 +25,32 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [pantryKeys, setPantryKeys] = useState<Set<string>>(new Set());
   const [servings, setServings] = useState(household.servings);
   const [planOpen, setPlanOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
+  const [linkedTitles, setLinkedTitles] = useState<Record<string, string>>({});
+  const [usedIn, setUsedIn] = useState<{ id: string; title: string }[]>([]);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    loadRecipe(id).then((r) => {
+    loadRecipe(id).then(async (r) => {
       setRecipe(r);
-      if (r) setServings(household.servings);
+      if (!r) return;
+      setServings(r.is_component ? r.servings : household.servings);
+      const subIds = [...new Set(r.recipe_ingredients.map((i) => i.sub_recipe_id).filter(Boolean))] as string[];
+      if (subIds.length) {
+        const { data } = await supabase.from("recipes").select("id, title").in("id", subIds);
+        setLinkedTitles(Object.fromEntries(((data as { id: string; title: string }[]) ?? []).map((x) => [x.id, x.title])));
+      }
     });
+    supabase
+      .from("recipe_ingredients")
+      .select("recipes!recipe_ingredients_recipe_id_fkey(id, title)")
+      .eq("sub_recipe_id", id)
+      .then(({ data }: { data: unknown }) => {
+        const rows = ((data as { recipes: { id: string; title: string } | { id: string; title: string }[] | null }[]) ?? [])
+          .map((d) => (Array.isArray(d.recipes) ? d.recipes[0] : d.recipes))
+          .filter(Boolean) as { id: string; title: string }[];
+        setUsedIn([...new Map(rows.map((x) => [x.id, x])).values()]);
+      });
     supabase
       .from("pantry_items")
       .select("name")
@@ -37,10 +58,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       .then(({ data }: { data: unknown }) => setPantryKeys(new Set(((data as Pick<PantryItem, "name">[]) ?? []).map((p) => ingredientKey(p.name)))));
   }, [id, household.id, household.servings, supabase]);
 
-  const steps = useMemo(
-    () => (recipe?.instructions ?? "").split("\n").map((s) => s.replace(/^\s*\d+[.)]\s*/, "").trim()).filter(Boolean),
-    [recipe?.instructions],
-  );
+  const steps = useMemo(() => splitSteps(recipe?.instructions), [recipe?.instructions]);
 
   if (recipe === undefined) {
     return (
@@ -52,12 +70,15 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   if (recipe === null) return <p className="py-16 text-center text-muted">No s'ha trobat la recepta.</p>;
 
   const factor = servings / recipe.servings;
-  const missing = recipe.recipe_ingredients.filter((i) => !i.optional && !pantryKeys.has(ingredientKey(i.name)));
+  const isAtHome = (name: string, subId: string | null) =>
+    pantryKeys.has(ingredientKey(name)) || (!!subId && !!linkedTitles[subId] && pantryKeys.has(ingredientKey(linkedTitles[subId])));
+  const missing = recipe.recipe_ingredients.filter((i) => !i.optional && !isAtHome(i.name, i.sub_recipe_id));
+  const course = courseInfo(recipe.course);
 
   async function addMissing() {
     setBusy(true);
     try {
-      const added = await addMissingToShoppingList(household, user.id, [{ servings, recipe: { ...recipe!, ingredients: recipe!.recipe_ingredients } }]);
+      const added = await addMissingToShoppingList(household, user.id, [{ recipeId: recipe!.id, servings }]);
       toast(added.length ? `${added.length} ingredients afegits a la llista` : "Ja ho tens tot! 👌");
     } catch {
       toast("No s'ha pogut actualitzar la llista");
@@ -88,9 +109,29 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
         </div>
       </div>
 
-      {recipe.image_url && (
+      {recipe.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={recipe.image_url} alt="" className="mb-5 aspect-[16/10] w-full rounded-[var(--radius-card)] object-cover" referrerPolicy="no-referrer" />
+      ) : (
+        <button className="btn-ghost -ml-3 mb-2 !px-3 text-sm" onClick={() => setPhotoOpen(true)}>
+          <ImagePlus className="size-4" /> Afegeix una foto
+        </button>
+      )}
+
+      {(course || recipe.is_component) && (
+        <div className="mb-2 flex flex-wrap gap-2">
+          {course && (
+            <span className="rounded-full bg-tomato-soft px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-tomato">
+              {course.emoji} {course.label}
+            </span>
+          )}
+          {recipe.is_component && (
+            <span className="rounded-full bg-saffron-soft px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-saffron">
+              Preelaborat
+              {recipe.yield_quantity ? ` · en surten ${formatQuantity(Number(recipe.yield_quantity), recipe.yield_unit)}` : ""}
+            </span>
+          )}
+        </div>
       )}
 
       <h1 className="text-3xl font-semibold leading-tight">{recipe.title}</h1>
@@ -136,7 +177,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
         </div>
         <ul className="card divide-y divide-line">
           {recipe.recipe_ingredients.map((ing) => {
-            const atHome = pantryKeys.has(ingredientKey(ing.name));
+            const atHome = isAtHome(ing.name, ing.sub_recipe_id);
             const unit = normalizeUnit(ing.unit);
             const qty = ing.quantity != null ? formatQuantity(roundQuantity(Number(ing.quantity) * factor, unit === "u" ? null : unit), ing.unit) : "";
             return (
@@ -148,7 +189,13 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
                   {atHome && <Check className="size-3" strokeWidth={3} />}
                 </span>
                 <span className="flex-1">
-                  {ing.name}
+                  {ing.sub_recipe_id ? (
+                    <Link href={`/receptes/${ing.sub_recipe_id}`} className="inline-flex items-center gap-1 font-medium text-herb underline decoration-herb/40 underline-offset-2">
+                      <Link2 className="size-3.5" /> {ing.name}
+                    </Link>
+                  ) : (
+                    ing.name
+                  )}
                   {ing.optional && <span className="ml-1 text-xs text-muted">(opcional)</span>}
                 </span>
                 <span className="text-sm font-semibold tabular-nums text-muted">{qty}</span>
@@ -163,19 +210,48 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
         )}
       </section>
 
+      {usedIn.length > 0 && (
+        <section className="mt-6 rounded-2xl bg-saffron-soft/60 p-4">
+          <h2 className="mb-2 font-sans text-xs font-bold uppercase tracking-wider text-muted">S'utilitza a</h2>
+          <ul className="flex flex-wrap gap-2">
+            {usedIn.map((r) => (
+              <li key={r.id}>
+                <Link href={`/receptes/${r.id}`} className="chip">
+                  {r.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {steps.length > 0 && (
         <section className="mt-8">
           <h2 className="mb-3 text-xl font-semibold">Preparació</h2>
-          <ol className="space-y-4">
+          <ol className="space-y-4" aria-label="Passos de la preparació">
             {steps.map((s, i) => (
               <li key={i} className="flex gap-3">
-                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-tomato-soft text-sm font-bold text-tomato">{i + 1}</span>
+                <span className="grid size-7 shrink-0 place-items-center rounded-full bg-tomato-soft text-sm font-bold text-tomato" aria-hidden>
+                  {i + 1}
+                </span>
                 <p className="pt-0.5 leading-relaxed">{s}</p>
               </li>
             ))}
           </ol>
         </section>
       )}
+
+      <PhotoSearchSheet
+        open={photoOpen}
+        initialQuery={recipe.title}
+        onClose={() => setPhotoOpen(false)}
+        onPick={async (url) => {
+          setPhotoOpen(false);
+          const { error } = await supabase.from("recipes").update({ image_url: url }).eq("id", recipe.id);
+          if (error) toast("No s'ha pogut desar la foto");
+          else setRecipe({ ...recipe, image_url: url });
+        }}
+      />
 
       <PlanSheet
         open={planOpen}

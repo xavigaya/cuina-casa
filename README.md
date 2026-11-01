@@ -6,7 +6,8 @@ App web familiar per gestionar la cuina i les compres de casa. Funciona al mòbi
 
 - **Llista de la compra** ordenada per seccions del súper, compartida i en temps real. S'hi escriu en llenguatge natural ("2 l de llet") o s'escaneja el codi de barres. En tornar del súper, el botó **Al rebost** passa el que s'ha comprat a l'inventari.
 - **Rebost, nevera i congelador** amb quantitats, dates de caducitat i avís quan en queda poc.
-- **Receptes** escrites a mà o **importades des d'un enllaç** de qualsevol web de cuina (llegeix el format estàndard schema.org/Recipe).
+- **Receptes** escrites a mà o **importades des d'un enllaç** de qualsevol web de cuina (llegeix el format estàndard schema.org/Recipe). La preparació és una llista numerada de passos, cada recepta pot ser entrant, primer, segon, plat únic o postres, i es pot **buscar una foto del plat** a Internet (Openverse i Wikimedia Commons, amb llicència lliure).
+- **Preelaborats enllaçats**: un sofregit, un brou o una salsa poden ser receptes pròpies i fer-se servir com a ingredient d'altres. Si no n'hi ha a casa, la llista de la compra hi afegeix els seus ingredients en la quantitat que cal.
 - **Menú setmanal** (esmorzar, dinar i sopar) que **genera la llista de la compra** sumant ingredients, adaptant les racions i restant el que ja hi ha a casa.
 - **Avisos de caducitat** a la pantalla d'inici i, opcionalment, com a notificació del mòbil.
 - **Escaneig de codis de barres** amb la càmera, amb cerca a [Open Food Facts](https://world.openfoodfacts.org) i memòria dels productes de casa.
@@ -30,7 +31,7 @@ Calen tres coses: un projecte de Supabase, l'inici de sessió de Google i la pub
 
 1. Entra a [supabase.com](https://supabase.com) amb el teu compte de GitHub i prem **New project**.
 2. Nom: `cuina-casa`. Posa una contrasenya de base de dades (desa-la en lloc segur) i tria una regió d'Europa.
-3. Quan estigui creat, ves a **SQL Editor → New query**, enganxa tot el contingut de [`supabase/migrations/0001_esquema_inicial.sql`](supabase/migrations/0001_esquema_inicial.sql) i prem **Run**. Ha de dir *Success*.
+3. Quan estigui creat, ves a **SQL Editor → New query**, enganxa tot el contingut de [`supabase/migrations/0001_esquema_inicial.sql`](supabase/migrations/0001_esquema_inicial.sql) i prem **Run**. Ha de dir *Success*. Repeteix-ho, per ordre, amb cada fitxer següent de la carpeta `supabase/migrations/` (`0002_…`, etc.).
 4. Ves a **Project Settings → API** i apunta:
    - **Project URL** (`https://xxxx.supabase.co`)
    - **anon public key** (una clau llarga que comença per `eyJ…`)
@@ -99,3 +100,12 @@ public/sw.js          service worker (instal·lació i ús sense connexió)
 ## Seguretat
 
 Cada taula té *Row Level Security*: una persona només pot llegir i modificar les dades de les llars de les quals és membre. Per entrar en una llar cal el codi d'invitació, que es pot canviar en qualsevol moment des d'Ajustos.
+
+## Actualitzacions de la base de dades
+
+Quan una nova versió afegeix un fitxer a `supabase/migrations/`, cal executar-lo una sola vegada a **Supabase → SQL Editor** (enganxar-lo sencer i prémer **Run**), per ordre de número.
+
+| Fitxer | Què afegeix |
+|---|---|
+| `0001_esquema_inicial.sql` | Taules, seguretat i temps real |
+| `0002_tipus_plat_i_preelaborats.sql` | Tipus de plat, preelaborats i receptes enllaçades |

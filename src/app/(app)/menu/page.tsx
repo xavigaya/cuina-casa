@@ -9,9 +9,10 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { addDays, dayName, formatShortDate, formatWeekRange, startOfWeek, toISODate, weekDays } from "@/lib/dates";
 import { addMissingToShoppingList } from "@/lib/plan-actions";
 import { normalizeText } from "@/lib/sections";
-import { MEALS, type Meal, type MealPlanEntry, type Recipe, type RecipeWithIngredients } from "@/lib/types";
+import { COURSES, COURSE_ORDER, courseInfo, type Course } from "@/lib/courses";
+import { MEALS, type Meal, type MealPlanEntry, type Recipe } from "@/lib/types";
 
-type Entry = MealPlanEntry & { recipes: Pick<Recipe, "id" | "title" | "servings" | "image_url"> | null };
+type Entry = MealPlanEntry & { recipes: Pick<Recipe, "id" | "title" | "servings" | "image_url" | "course"> | null };
 
 export default function MenuPage() {
   const supabase = supabaseBrowser();
@@ -22,7 +23,7 @@ export default function MenuPage() {
   const todayISO = toISODate(new Date());
 
   const { rows: entries, setRows, loading, reload } = useLiveTable<Entry>("meal_plan", {
-    select: "*, recipes(id, title, servings, image_url)",
+    select: "*, recipes(id, title, servings, image_url, course)",
     filter: (q) => q.gte("day", from).lte("day", to),
     order: { column: "created_at" },
     deps: [from, to],
@@ -40,6 +41,9 @@ export default function MenuPage() {
       const k = `${e.day}|${e.meal}`;
       map.set(k, [...(map.get(k) ?? []), e]);
     }
+    for (const list of map.values()) {
+      list.sort((a, b) => (COURSE_ORDER[a.recipes?.course ?? ""] ?? 9) - (COURSE_ORDER[b.recipes?.course ?? ""] ?? 9));
+    }
     return map;
   }, [entries]);
 
@@ -49,15 +53,7 @@ export default function MenuPage() {
     if (!upcomingWithRecipe.length) return;
     setBusy(true);
     try {
-      const ids = [...new Set(upcomingWithRecipe.map((e) => e.recipe_id!))];
-      const { data } = await supabase.from("recipes").select("*, recipe_ingredients(*)").in("id", ids);
-      const full = new Map(((data as RecipeWithIngredients[]) ?? []).map((r) => [r.id, r]));
-      const meals = upcomingWithRecipe
-        .filter((e) => full.has(e.recipe_id!))
-        .map((e) => {
-          const r = full.get(e.recipe_id!)!;
-          return { servings: e.servings, recipe: { title: r.title, servings: r.servings, ingredients: r.recipe_ingredients } };
-        });
+      const meals = upcomingWithRecipe.map((e) => ({ recipeId: e.recipe_id!, servings: e.servings }));
       const added = await addMissingToShoppingList(household, user.id, meals);
       toast(added.length ? `${added.length} productes afegits a la llista` : "Ja tens tot el necessari 👌", added.length ? { label: "Veure", run: () => (window.location.href = "/llista") } : undefined);
     } catch {
@@ -129,6 +125,9 @@ export default function MenuPage() {
                             <div key={e.id} className="flex items-center gap-2 rounded-xl bg-paper px-3 py-2">
                               {e.recipes ? (
                                 <Link href={`/receptes/${e.recipes.id}`} className="min-w-0 flex-1 truncate font-medium">
+                                  {courseInfo(e.recipes.course) && (
+                                    <span className="mr-1.5 text-[10px] font-bold uppercase tracking-wide text-muted">{courseInfo(e.recipes.course)!.label}</span>
+                                  )}
                                   {e.recipes.title}
                                 </Link>
                               ) : (
@@ -144,12 +143,16 @@ export default function MenuPage() {
                               </button>
                             </div>
                           ))}
-                          {list.length === 0 && (
+                          {list.length === 0 ? (
                             <button
                               className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-3 py-2 text-sm text-muted"
                               onClick={() => setSlot({ day: iso, meal: m.id })}
                             >
                               <Plus className="size-4" /> Afegeix
+                            </button>
+                          ) : (
+                            <button className="flex items-center gap-1 px-1 text-xs font-semibold text-muted" onClick={() => setSlot({ day: iso, meal: m.id })}>
+                              <Plus className="size-3.5" /> Un altre plat
                             </button>
                           )}
                         </div>
@@ -186,7 +189,13 @@ function PickRecipe({
 }) {
   const [query, setQuery] = useState("");
   const [servings, setServings] = useState(defaultServings);
-  const visible = recipes.filter((r) => !query || normalizeText(r.title).includes(normalizeText(query)));
+  const [course, setCourse] = useState<Course | "base" | null>(null);
+  const visible = recipes.filter(
+    (r) =>
+      (!query || normalizeText(r.title).includes(normalizeText(query))) &&
+      (course === "base" ? r.is_component : course ? r.course === course : !r.is_component || !!r.course),
+  );
+  const hasComponents = recipes.some((r) => r.is_component);
   const s = servings === defaultServings ? null : servings;
 
   return (
@@ -208,6 +217,24 @@ function PickRecipe({
         <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
         <input className="input !pl-10" placeholder="Busca una recepta o escriu un plat…" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus />
       </div>
+
+      {recipes.length > 0 && (
+        <div className="-mx-5 flex gap-2 overflow-x-auto px-5 pb-1">
+          <button className="chip" data-active={course === null} onClick={() => setCourse(null)}>
+            Tots
+          </button>
+          {COURSES.filter((c) => recipes.some((r) => r.course === c.id)).map((c) => (
+            <button key={c.id} className="chip" data-active={course === c.id} onClick={() => setCourse(course === c.id ? null : c.id)}>
+              {c.emoji} {c.plural}
+            </button>
+          ))}
+          {hasComponents && (
+            <button className="chip" data-active={course === "base"} onClick={() => setCourse(course === "base" ? null : "base")}>
+              Preelaborats
+            </button>
+          )}
+        </div>
+      )}
 
       {query.trim() && (
         <button className="btn-secondary w-full !justify-start" onClick={() => onPick({ recipe_id: null, note: query.trim(), servings: s })}>
@@ -236,7 +263,10 @@ function PickRecipe({
                     🍽️
                   </span>
                 )}
-                <span className="font-medium">{r.title}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">{r.title}</span>
+                  {courseInfo(r.course) && <span className="text-xs text-muted">{courseInfo(r.course)!.label}</span>}
+                </span>
               </button>
             </li>
           ))}

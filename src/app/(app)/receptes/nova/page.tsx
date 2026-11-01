@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { RecipeEditor } from "@/components/recipe-editor";
 import { useHousehold } from "@/components/household";
 import { PageHeader } from "@/components/ui";
-import { IMPORT_DRAFT_KEY, ingredientToLine, type RecipeDraft } from "@/lib/recipes";
+import { IMPORT_DRAFT_KEY, emptyDraft, ingredientToLine, type RecipeDraft } from "@/lib/recipes";
 import type { ImportedRecipe } from "@/lib/recipe-import";
 
 export default function NewRecipePage() {
@@ -13,16 +13,7 @@ export default function NewRecipePage() {
   const [imported, setImported] = useState(false);
 
   useEffect(() => {
-    const empty: RecipeDraft = {
-      title: "",
-      servings: household.servings,
-      prep_minutes: null,
-      image_url: null,
-      source_url: null,
-      instructions: "",
-      tags: [],
-      ingredientLines: "",
-    };
+    const empty = emptyDraft(household.servings);
     let draft = empty;
     if (window.location.search.includes("importada")) {
       try {
@@ -30,13 +21,13 @@ export default function NewRecipePage() {
         if (raw) {
           const r = JSON.parse(raw) as ImportedRecipe;
           draft = {
+            ...empty,
             title: r.title,
             servings: r.servings ?? household.servings,
             prep_minutes: r.prepMinutes,
             image_url: r.imageUrl,
             source_url: r.sourceUrl,
             instructions: r.instructions,
-            tags: [],
             ingredientLines: r.ingredients.map(ingredientToLine).join("\n"),
           };
           sessionStorage.removeItem(IMPORT_DRAFT_KEY);

@@ -1,3 +1,5 @@
+import type { Course } from "./courses";
+
 export interface Household {
   id: string;
   name: string;
@@ -55,6 +57,10 @@ export interface Recipe {
   source_url: string | null;
   image_url: string | null;
   tags: string[];
+  course: Course | null;
+  is_component: boolean;
+  yield_quantity: number | null;
+  yield_unit: string | null;
   created_at: string;
 }
 
@@ -67,6 +73,7 @@ export interface RecipeIngredient {
   unit: string | null;
   section: string;
   optional: boolean;
+  sub_recipe_id: string | null;
 }
 
 export type RecipeWithIngredients = Recipe & { recipe_ingredients: RecipeIngredient[] };

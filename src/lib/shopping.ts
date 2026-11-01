@@ -154,3 +154,114 @@ function groupStock(items: StockItem[]) {
   }
   return map;
 }
+
+// ---------------------------------------------------------------------------
+// Receptes enllaçades (preelaborats)
+// ---------------------------------------------------------------------------
+
+export interface RecipeNode {
+  id: string;
+  title: string;
+  servings: number;
+  yield_quantity: number | null;
+  yield_unit: string | null;
+  ingredients: {
+    name: string;
+    quantity: number | null;
+    unit: string | null;
+    section?: string | null;
+    optional?: boolean;
+    sub_recipe_id?: string | null;
+  }[];
+}
+
+const MAX_DEPTH = 4;
+
+/**
+ * Converteix els àpats planificats en una llista plana de receptes a cuinar.
+ * Quan un ingredient és una altra recepta (un preelaborat com un sofregit):
+ *  - si ja n'hi ha prou al rebost, no cal fer res;
+ *  - si no, s'hi afegeix la recepta del preelaborat, escalada a la quantitat que falta.
+ *
+ * Com s'escala el preelaborat:
+ *  - si la recepta indica quant en surt (p. ex. 500 g) i les unitats són compatibles,
+ *    es fa la part proporcional (200 g → 0,4 vegades la recepta);
+ *  - si no, se suposa que es fa per al mateix nombre de persones que el plat.
+ */
+export function expandPlannedMeals(
+  entries: { recipeId: string; servings: number | null }[],
+  recipes: Map<string, RecipeNode>,
+  pantry: StockItem[],
+  defaultServings: number,
+): PlannedMeal[] {
+  const result: PlannedMeal[] = [];
+  const stock = groupStock(pantry);
+
+  const walk = (recipe: RecipeNode, portions: number, depth: number, seen: Set<string>) => {
+    const recipeServings = recipe.servings > 0 ? recipe.servings : defaultServings;
+    const factor = portions / recipeServings;
+    const plain: RecipeNode["ingredients"] = [];
+
+    for (const ing of recipe.ingredients) {
+      const sub = ing.sub_recipe_id ? recipes.get(ing.sub_recipe_id) : undefined;
+      if (!sub || ing.optional || seen.has(sub.id) || depth >= MAX_DEPTH) {
+        plain.push(ing);
+        continue;
+      }
+
+      const unit = normalizeUnit(ing.unit);
+      const needed = ing.quantity != null ? toBase(Number(ing.quantity) * factor, unit) : null;
+      const remaining = consumeStock(stock, [ingredientKey(ing.name), ingredientKey(sub.title)], needed);
+      if (remaining === 0) continue; // ja en tenim a casa
+
+      let subPortions = portions; // per defecte, per a les mateixes persones que el plat
+      if (remaining != null && sub.yield_quantity) {
+        const yieldBase = toBase(Number(sub.yield_quantity), normalizeUnit(sub.yield_unit));
+        if ((yieldBase.unit ?? "u") === (remaining.unit ?? "u") && yieldBase.quantity > 0) {
+          subPortions = (remaining.quantity / yieldBase.quantity) * (sub.servings > 0 ? sub.servings : defaultServings);
+        }
+      }
+      walk(sub, subPortions, depth + 1, new Set([...seen, sub.id]));
+    }
+
+    if (plain.length) {
+      result.push({ servings: portions, recipe: { title: recipe.title, servings: recipeServings, ingredients: plain } });
+    }
+  };
+
+  for (const entry of entries) {
+    const recipe = recipes.get(entry.recipeId);
+    if (recipe) walk(recipe, entry.servings ?? defaultServings, 0, new Set([recipe.id]));
+  }
+  return result;
+}
+
+/**
+ * Resta del rebost la quantitat necessària d'un preelaborat.
+ * Torna el que falta (null = en falta però no sabem quant; 0 = cobert).
+ */
+function consumeStock(
+  stock: Map<string, { quantity: number | null; unit: UnitId | null }[]>,
+  keys: string[],
+  needed: { quantity: number; unit: UnitId | null } | null,
+): { quantity: number; unit: UnitId | null } | 0 | null {
+  const items = keys.flatMap((k) => stock.get(k) ?? []);
+  if (items.length === 0) return needed;
+  let remaining = needed ? { ...needed } : null;
+  for (const item of items) {
+    if (item.quantity == null || item.quantity <= 0) {
+      if (item.quantity == null) return 0; // en tenim, sense quantitat concreta
+      continue;
+    }
+    if (!remaining) {
+      item.quantity = 0;
+      return 0;
+    }
+    if ((item.unit ?? "u") !== (remaining.unit ?? "u")) return 0; // unitats diferents: en tenim, ho donem per bo
+    const used = Math.min(item.quantity, remaining.quantity);
+    item.quantity -= used;
+    remaining.quantity -= used;
+    if (remaining.quantity <= 1e-9) return 0;
+  }
+  return remaining;
+}

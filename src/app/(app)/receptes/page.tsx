@@ -8,6 +8,7 @@ import { useLiveTable } from "@/components/household";
 import { EmptyState, PageHeader, Sheet, Spinner } from "@/components/ui";
 import { IMPORT_DRAFT_KEY } from "@/lib/recipes";
 import { normalizeText } from "@/lib/sections";
+import { COURSES, courseInfo, type Course } from "@/lib/courses";
 import type { Recipe } from "@/lib/types";
 
 export default function RecipesPage() {
@@ -15,12 +16,18 @@ export default function RecipesPage() {
   const { rows: recipes, loading } = useLiveTable<Recipe>("recipes", { order: { column: "title" }, realtime: false });
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState<string | null>(null);
+  const [course, setCourse] = useState<Course | "base" | null>(null);
   const [importOpen, setImportOpen] = useState(false);
 
   const tags = useMemo(() => [...new Set(recipes.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b, "ca")), [recipes]);
   const visible = recipes.filter(
-    (r) => (!query || normalizeText(r.title).includes(normalizeText(query))) && (!tag || r.tags.includes(tag)),
+    (r) =>
+      (!query || normalizeText(r.title).includes(normalizeText(query))) &&
+      (!tag || r.tags.includes(tag)) &&
+      (course === "base" ? r.is_component : !course || r.course === course),
   );
+  const usedCourses = COURSES.filter((c) => recipes.some((r) => r.course === c.id));
+  const hasComponents = recipes.some((r) => r.is_component);
 
   return (
     <>
@@ -45,14 +52,31 @@ export default function RecipesPage() {
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input className="input !rounded-full !pl-10" placeholder="Busca una recepta…" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
+          {(usedCourses.length > 0 || hasComponents) && (
+            <div className="-mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
+              <button className="chip" data-active={!course} onClick={() => setCourse(null)}>
+                Totes
+              </button>
+              {usedCourses.map((c) => (
+                <button key={c.id} className="chip" data-active={course === c.id} onClick={() => setCourse(course === c.id ? null : c.id)}>
+                  {c.emoji} {c.plural}
+                </button>
+              ))}
+              {hasComponents && (
+                <button className="chip" data-active={course === "base"} onClick={() => setCourse(course === "base" ? null : "base")}>
+                  🫙 Preelaborats
+                </button>
+              )}
+            </div>
+          )}
           {tags.length > 0 && (
             <div className="-mx-4 mb-5 flex gap-2 overflow-x-auto px-4 pb-1">
               <button className="chip" data-active={!tag} onClick={() => setTag(null)}>
-                Totes
+                # Totes
               </button>
               {tags.map((t) => (
                 <button key={t} className="chip" data-active={tag === t} onClick={() => setTag(tag === t ? null : t)}>
-                  {t}
+                  # {t}
                 </button>
               ))}
             </div>
@@ -81,7 +105,12 @@ export default function RecipesPage() {
           {visible.map((r) => (
             <li key={r.id}>
               <Link href={`/receptes/${r.id}`} className="card block h-full overflow-hidden transition active:scale-[0.98]">
-                <div className="aspect-[4/3] bg-line/60">
+                <div className="relative aspect-[4/3] bg-line/60">
+                  {(courseInfo(r.course) || r.is_component) && (
+                    <span className="absolute left-2 top-2 rounded-full bg-paper/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink shadow-sm">
+                      {r.is_component ? "Preelaborat" : courseInfo(r.course)!.label}
+                    </span>
+                  )}
                   {r.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={r.image_url} alt="" className="size-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
