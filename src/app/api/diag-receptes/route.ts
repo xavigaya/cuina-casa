@@ -35,28 +35,18 @@ async function get(url: string) {
 }
 
 export async function GET() {
-  const pages = [
-    "https://www.javirecetas.com/sopa-de-calabaza-clasica/",
-    "https://www.lasrecetasdelaura.com/sopa-de-lentejas-estilo-jalisco-con-carne-receta-mexicana/",
-    "https://www.3cat.cat/tv3/cuines/recepta/llenties-estofades/9141/",
+  const ing = await get("https://www.3cat.cat/tv3/cuines/receptes/ingredients/");
+  const slugs = [...new Set((ing.text.match(/\/tv3\/cuines\/[a-z0-9-]+\/receptes\//g) ?? []).map((h) => h.split("/")[3]))];
+  const ua = "Mozilla/5.0 (compatible; CuinaCasa/1.0; +https://github.com/xavigaya/cuina-casa)";
+  const tests = [
+    "https://www.pequerecetas.com/wp-json/wp/v2/posts?search=merluza&_fields=link&per_page=3",
+    "https://www.javirecetas.com/wp-json/wp/v2/posts?search=merluza&_fields=link&per_page=3",
+    "https://www.abc.es/recetasderechupete/?s=merluza",
+    "https://cookpad.com/es/buscar/merluza",
+    "https://www.3cat.cat/tv3/cuines/peix/receptes/",
   ];
-  const out: unknown[] = [];
-  for (const u of pages) {
-    const p = await get(u);
-    const blocks = [...p.text.matchAll(/<script[^>]*type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1]);
-    const info = blocks.map((b) => {
-      let err: string | null = null;
-      try { JSON.parse(b.trim()); } catch (e) { err = (e as Error).message; }
-      const i = b.indexOf("Recipe");
-      return { len: b.length, err, start: b.trim().slice(0, 300), aroundRecipe: i >= 0 ? b.slice(Math.max(0, i - 200), i + 900) : null };
-    });
-    out.push({ url: u, status: p.status, blocks: info, ingredientHtml: (p.text.match(/.{0,200}(ingredient|Ingredient).{0,400}/) ?? [""])[0].slice(0, 700) });
-  }
-  const tv = await get("https://www.3cat.cat/tv3/cuines/llentia/receptes/");
-  const rg = await get("https://www.recetasgratis.net/busqueda/q/lentejas");
-  out.push({
-    tv3: { status: tv.status, hrefs: [...new Set((tv.text.match(/href="[^"]*recepta[^"]*"/g) ?? []))].slice(0, 5) },
-    recetasgratis: { status: rg.status, url: rg.url, hrefs: [...new Set((rg.text.match(/href="[^"]*receta[^"]*"/g) ?? []))].slice(0, 8) },
-  });
-  return NextResponse.json(out);
+  const uaTest = await Promise.all(tests.map(async (u) => {
+    try { const r = await fetch(u, { headers: { "User-Agent": ua }, signal: AbortSignal.timeout(9000) }); return { u, status: r.status }; } catch (e) { return { u, status: 0, e: (e as Error).message }; }
+  }));
+  return NextResponse.json({ ingStatus: ing.status, slugCount: slugs.length, slugs: slugs.join(" "), uaTest });
 }
