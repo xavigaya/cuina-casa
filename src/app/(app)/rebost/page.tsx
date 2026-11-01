@@ -6,6 +6,7 @@ import { useHousehold, useLiveTable } from "@/components/household";
 import { BarcodeScanner, lookupBarcode, rememberProduct } from "@/components/barcode-scanner";
 import { QuantityUnitFields, SectionSelect, parseQty, qtyToString } from "@/components/fields";
 import { EmptyState, PageHeader, Sheet, Spinner, toast } from "@/components/ui";
+import { UseItUp } from "@/components/use-it-up";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { expiryLabel, expiryStatus, type ExpiryStatus } from "@/lib/dates";
 import { guessSection, normalizeText, sectionInfo } from "@/lib/sections";
@@ -164,6 +165,12 @@ export default function PantryPage() {
           </button>
         )}
       </div>
+
+      {filter === "caduca" && (
+        <div className="mb-4">
+          <UseItUp expiring={items.filter((i) => ["avui", "aviat"].includes(expiryStatus(i.expires_on, warn)))} pantry={items} />
+        </div>
+      )}
 
       {loading ? (
         <div className="grid place-items-center py-16">

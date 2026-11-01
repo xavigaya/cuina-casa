@@ -6,6 +6,7 @@ import { AlertTriangle, ArrowRight, CalendarDays, Lightbulb, ShoppingCart } from
 import { useHousehold, useLiveTable, usePermissions } from "@/components/household";
 import { isProposal } from "@/lib/permissions";
 import { Spinner, toast } from "@/components/ui";
+import { UseItUp } from "@/components/use-it-up";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { dayName, expiryLabel, expiryStatus, formatShortDate, toISODate } from "@/lib/dates";
 import { notifyExpiring } from "@/lib/notifications";
@@ -134,7 +135,8 @@ export default function HomePage() {
               );
             })}
           </ul>
-          <Link href="/rebost" className="flex items-center justify-end gap-1 px-4 py-3 text-sm font-semibold text-tomato">
+          <UseItUp expiring={expiring.filter((p) => expiryStatus(p.expires_on, warn) !== "caducat")} pantry={pantry} compact />
+          <Link href="/rebost" className="flex items-center justify-end gap-1 border-t border-line px-4 py-3 text-sm font-semibold text-tomato">
             Obre el rebost <ArrowRight className="size-4" />
           </Link>
         </section>

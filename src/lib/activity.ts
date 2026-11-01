@@ -22,6 +22,7 @@ export type ActivityArea = "receptes" | "menu" | "llista" | "rebost" | "aliments
 export const AREA_OF: Record<string, ActivityArea> = {
   recipes: "receptes",
   meal_plan: "menu",
+  menu_templates: "menu",
   shopping_items: "llista",
   pantry_items: "rebost",
   foods: "aliments",
@@ -39,7 +40,7 @@ export const AREA_LABEL: Record<ActivityArea, string> = {
 };
 
 /** Les taules que undo_actions sap desfer */
-export const UNDOABLE = new Set(["recipes", "meal_plan", "shopping_items", "pantry_items", "foods"]);
+export const UNDOABLE = new Set(["recipes", "meal_plan", "shopping_items", "pantry_items", "foods", "menu_templates"]);
 
 const MEAL_NAME: Record<string, string> = { esmorzar: "esmorzar", dinar: "dinar", sopar: "sopar" };
 const LOCATION_LABEL: Record<string, string> = { rebost: "al rebost", nevera: "a la nevera", congelador: "al congelador" };
@@ -116,6 +117,10 @@ export function describeEntry(e: ActivityEntry): string {
       }
       return `ha tret ${name} ${LOCATION_FROM[loc] ?? "del rebost"}`;
     }
+    case "menu_templates":
+      if (e.action === "insert") return `ha desat la plantilla de menú ${name}`;
+      if (e.action === "update") return `ha canviat la plantilla de menú ${name}`;
+      return `ha esborrat la plantilla de menú ${name}`;
     case "foods":
       if (e.action === "insert") return `ha afegit l'aliment ${name}`;
       if (e.action === "update") return `ha corregit l'aliment ${name}`;

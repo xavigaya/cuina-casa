@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { Check, CheckCheck, ChevronLeft, ChevronRight, Plus, Search, ShoppingCart, Users, X } from "lucide-react";
+import { Check, CheckCheck, ChevronLeft, LayoutTemplate, ChevronRight, Plus, Search, ShoppingCart, Users, X } from "lucide-react";
 import { useHousehold, useLiveTable, usePermissions } from "@/components/household";
 import { canModify, isProposal } from "@/lib/permissions";
 import { setStatus, undoLatest } from "@/lib/proposals";
@@ -18,6 +18,7 @@ import { analyzeWeek } from "@/lib/menu-analysis";
 import type { Proposal } from "@/lib/harvard";
 import { DayFooter, WeekSummary, WeekendCard } from "@/components/menu-nutrition";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
+import { MenuTemplatesSheet } from "@/components/menu-templates";
 
 type Entry = MealPlanEntry & { recipes: Pick<Recipe, "id" | "title" | "servings" | "image_url" | "course"> | null };
 
@@ -41,6 +42,8 @@ export default function MenuPage() {
   const [slot, setSlot] = useState<{ day: string; meal: Meal } | null>(null);
   const [busy, setBusy] = useState(false);
   const [showBreakfast, setShowBreakfast] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const recipeIds = useMemo(() => new Set(recipes.map((r) => r.id)), [recipes]);
   const nutrition = useNutrition(household.id);
   const [onlineReq, setOnlineReq] = useState<OnlineSearchRequest | null>(null);
   const dayList = useMemo(() => weekDays(monday).map(toISODate), [monday]);
@@ -161,10 +164,15 @@ export default function MenuPage() {
         </p>
       )}
 
-      <button className="btn-primary mb-6 w-full" onClick={generateList} disabled={busy || upcomingWithRecipe.length === 0}>
-        <ShoppingCart className="size-4" />
-        {busy ? "Calculant…" : "Genera la llista de la compra"}
-      </button>
+      <div className="mb-6 flex gap-2">
+        <button className="btn-primary flex-1" onClick={generateList} disabled={busy || upcomingWithRecipe.length === 0}>
+          <ShoppingCart className="size-4" />
+          {busy ? "Calculant…" : "Genera la llista de la compra"}
+        </button>
+        <button className="btn-secondary shrink-0 !px-3" onClick={() => setTemplatesOpen(true)} aria-label="Plantilles de menú" title="Plantilles de menú">
+          <LayoutTemplate className="size-5" />
+        </button>
+      </div>
 
       {analysis && analysis.daysWithData > 0 && <WeekSummary analysis={analysis} />}
 
@@ -294,6 +302,15 @@ export default function MenuPage() {
           )}
         </div>
       )}
+
+      <MenuTemplatesSheet
+        open={templatesOpen}
+        onClose={() => setTemplatesOpen(false)}
+        mondayISO={from}
+        week={entries}
+        recipeIds={recipeIds}
+        onApplied={reload}
+      />
 
       <OnlineRecipesSheet
         request={onlineReq}

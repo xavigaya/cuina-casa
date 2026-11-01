@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarPlus, Check, Clock, Copy, ExternalLink, ImagePlus, Languages, Lightbulb, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Check, ChefHat, CookingPot, Clock, Copy, ExternalLink, ImagePlus, Languages, Lightbulb, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { useHousehold, usePermissions } from "@/components/household";
 import { canModify, isProposal } from "@/lib/permissions";
 import { setStatus, undoLatest } from "@/lib/proposals";
 import { Sheet, Spinner, toast } from "@/components/ui";
 import { PhotoSearchSheet } from "@/components/photo-search";
+import { CookedSheet } from "@/components/cooked-sheet";
 import { RecipeNutritionCard } from "@/components/nutrition";
 import { MissingDataHelper } from "@/components/missing-data";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
@@ -36,6 +37,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [pantryKeys, setPantryKeys] = useState<Set<string>>(new Set());
   const [servings, setServings] = useState(household.servings);
   const [planOpen, setPlanOpen] = useState(false);
+  const [cookedOpen, setCookedOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [linkedTitles, setLinkedTitles] = useState<Record<string, string>>({});
   const [usedIn, setUsedIn] = useState<{ id: string; title: string }[]>([]);
@@ -342,7 +344,13 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       )}
 
       <div className="mt-5 grid grid-cols-2 gap-2">
-        <button className="btn-primary" onClick={() => setPlanOpen(true)}>
+        <Link href={`/receptes/${recipe.id}/cuinar?racions=${servings}`} className="btn-primary">
+          <ChefHat className="size-4" /> Cuina-la
+        </Link>
+        <button className="btn-secondary" onClick={() => setCookedOpen(true)}>
+          <CookingPot className="size-4" /> L&apos;he cuinada
+        </button>
+        <button className="btn-secondary" onClick={() => setPlanOpen(true)}>
           <CalendarPlus className="size-4" /> Al menú
         </button>
         <button className="btn-secondary" onClick={addMissing} disabled={busy}>
@@ -462,6 +470,20 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           if (error) toast("No s'ha pogut desar la foto");
           else setRecipe({ ...recipe, image_url: url });
         }}
+      />
+
+      <CookedSheet
+        open={cookedOpen}
+        onClose={() => setCookedOpen(false)}
+        recipeId={recipe.id}
+        servings={servings}
+        onDone={() =>
+          supabase
+            .from("pantry_items")
+            .select("name")
+            .eq("household_id", household.id)
+            .then(({ data }: { data: unknown }) => setPantryKeys(new Set(((data as Pick<PantryItem, "name">[]) ?? []).map((p) => ingredientKey(p.name)))))
+        }
       />
 
       <PlanSheet

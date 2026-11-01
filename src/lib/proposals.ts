@@ -44,3 +44,30 @@ export async function undoDeletes(table: string, rowIds: string[]): Promise<stri
   const res = await supabase.rpc("undo_actions", { p_ids: ids });
   return res.error ? res.error.message : null;
 }
+
+/**
+ * Desfà l'última acció de cada un d'aquests elements (p. ex. tots els
+ * productes del rebost que ha canviat «L'he cuinada»).
+ */
+export async function undoLatestFor(table: string, rowIds: string[]): Promise<string | null> {
+  if (!rowIds.length) return null;
+  const supabase = supabaseBrowser();
+  const { data, error } = await supabase
+    .from("activity_log")
+    .select("id, row_id")
+    .eq("table_name", table)
+    .in("row_id", rowIds)
+    .is("undone_at", null)
+    .order("id", { ascending: false });
+  if (error) return "Cal executar la migració 0005 a Supabase per poder desfer";
+  const seen = new Set<string>();
+  const ids: number[] = [];
+  for (const row of (data as { id: number; row_id: string }[] | null) ?? []) {
+    if (seen.has(row.row_id)) continue;
+    seen.add(row.row_id);
+    ids.push(row.id);
+  }
+  if (!ids.length) return "No hi ha res per desfer";
+  const res = await supabase.rpc("undo_actions", { p_ids: ids });
+  return res.error ? res.error.message : null;
+}
