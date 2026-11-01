@@ -126,70 +126,17 @@ export function OnlineRecipesSheet({
         <p className="py-6 text-center text-sm text-muted">No hem trobat receptes que es puguin importar. Prova amb altres paraules, millor en castellà.</p>
       ) : results ? (
         <ul className="space-y-3">
-          {results.map((r) => {
-            const status = r.evaluation ? STATUS_LABEL[r.evaluation.status] : null;
-            const done = imported[r.url];
-            return (
-              <li key={r.url} className="card overflow-hidden">
-                {r.image && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={r.image} alt="" className="aspect-[16/9] w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
-                )}
-                <div className="space-y-3 p-4">
-                  <div>
-                    <p className="font-display text-lg font-semibold leading-snug">{r.title}</p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
-                      <span className="flex items-center gap-1">
-                        <Globe className="size-3" /> {r.site}
-                      </span>
-                      {r.prepMinutes && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="size-3" /> {r.prepMinutes} min
-                        </span>
-                      )}
-                      {courseInfo(r.course) && <span>{courseInfo(r.course)!.label}</span>}
-                      {r.perServing && <span>≈ {r.perServing.kcal} kcal/ració</span>}
-                    </p>
-                  </div>
-                  {r.plate && r.evaluation && r.evaluation.status !== "no_avaluable" && (
-                    <div className="flex items-center gap-3">
-                      <HarvardPlate plate={r.plate} size={56} />
-                      <div className="min-w-0 flex-1">
-                        {request?.imbalance && r.compensates.length > 0 ? (
-                          <span className="flex flex-wrap gap-1">
-                            {r.compensates.map((t) => (
-                              <span key={t} className="rounded-full bg-herb-soft px-2 py-0.5 text-xs font-bold text-herb">
-                                {t}
-                              </span>
-                            ))}
-                          </span>
-                        ) : (
-                          status && <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${status.className}`}>{status.text}</span>
-                        )}
-                        <p className="mt-1 text-xs text-muted">{r.evaluation.advice.slice(0, 2).join(" · ")}</p>
-                      </div>
-                    </div>
-                  )}
-                  {r.incomplete && <p className="text-xs text-muted">* Alguns ingredients no s'han pogut valorar.</p>}
-                  <div className="flex flex-wrap gap-2">
-                    {done ? (
-                      <Link href={`/receptes/${done}`} className="btn-secondary flex-1 !text-herb">
-                        <Check className="size-4" /> Importada · obre-la
-                      </Link>
-                    ) : (
-                      <button className="btn-primary flex-1" onClick={() => importIt(r)} disabled={importing !== null}>
-                        <Plus className="size-4" />
-                        {importing === r.url ? "Important…" : request?.target ? "Importa i afegeix al menú" : "Importa"}
-                      </button>
-                    )}
-                    <a href={r.url} target="_blank" rel="noreferrer" className="btn-secondary !px-3" aria-label="Obre la web original">
-                      <ExternalLink className="size-4" />
-                    </a>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
+          {results.map((r) => (
+            <OnlineRecipeCard
+              key={r.url}
+              r={r}
+              showCompensation={!!request?.imbalance}
+              importedId={imported[r.url]}
+              importing={importing}
+              importLabel={request?.target ? "Importa i afegeix al menú" : "Importa"}
+              onImport={() => importIt(r)}
+            />
+          ))}
         </ul>
       ) : null}
 
@@ -198,5 +145,83 @@ export function OnlineRecipesSheet({
         <Disclaimer />
       </div>
     </Sheet>
+  );
+}
+
+export function OnlineRecipeCard({
+  r,
+  showCompensation,
+  importedId,
+  importing,
+  importLabel,
+  onImport,
+}: {
+  r: OnlineRecipe;
+  showCompensation: boolean;
+  importedId?: string;
+  importing: string | null;
+  importLabel: string;
+  onImport: () => void;
+}) {
+  const status = r.evaluation ? STATUS_LABEL[r.evaluation.status] : null;
+  return (
+    <li className="card overflow-hidden">
+      {r.image && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={r.image} alt="" className="aspect-[16/9] w-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
+      )}
+      <div className="space-y-3 p-4">
+        <div>
+          <p className="font-display text-lg font-semibold leading-snug">{r.title}</p>
+          <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
+            <span className="flex items-center gap-1">
+              <Globe className="size-3" /> {r.site}
+            </span>
+            {r.prepMinutes && (
+              <span className="flex items-center gap-1">
+                <Clock className="size-3" /> {r.prepMinutes} min
+              </span>
+            )}
+            {courseInfo(r.course) && <span>{courseInfo(r.course)!.label}</span>}
+            {r.perServing && <span>≈ {r.perServing.kcal} kcal/ració</span>}
+          </p>
+        </div>
+        {r.plate && r.evaluation && r.evaluation.status !== "no_avaluable" && (
+          <div className="flex items-center gap-3">
+            <HarvardPlate plate={r.plate} size={56} />
+            <div className="min-w-0 flex-1">
+              {showCompensation && r.compensates.length > 0 ? (
+                <span className="flex flex-wrap gap-1">
+                  {r.compensates.map((t) => (
+                    <span key={t} className="rounded-full bg-herb-soft px-2 py-0.5 text-xs font-bold text-herb">
+                      {t}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                status && <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${status.className}`}>{status.text}</span>
+              )}
+              <p className="mt-1 text-xs text-muted">{r.evaluation.advice.slice(0, 2).join(" · ")}</p>
+            </div>
+          </div>
+        )}
+        {r.incomplete && <p className="text-xs text-muted">* Alguns ingredients no s'han pogut valorar.</p>}
+        <div className="flex flex-wrap gap-2">
+          {importedId ? (
+            <Link href={`/receptes/${importedId}`} className="btn-secondary flex-1 !text-herb">
+              <Check className="size-4" /> Importada · obre-la
+            </Link>
+          ) : (
+            <button className="btn-primary flex-1" onClick={onImport} disabled={importing !== null}>
+              <Plus className="size-4" />
+              {importing === r.url ? "Important…" : importLabel}
+            </button>
+          )}
+          <a href={r.url} target="_blank" rel="noreferrer" className="btn-secondary !px-3" aria-label="Obre la web original">
+            <ExternalLink className="size-4" />
+          </a>
+        </div>
+      </div>
+    </li>
   );
 }
