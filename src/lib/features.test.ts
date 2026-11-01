@@ -351,3 +351,28 @@ describe("duplicar receptes", async () => {
     expect(lines.map((p) => resolveLink(p.name, d.links, []))).toEqual([null, "sofregit"]);
   });
 });
+
+describe("plats del menú sense recepta", async () => {
+  const { groupDishes, dishKey } = await import("./dishes-without-recipe");
+  it("agrupa pel nom sense distingir majúscules ni accents i ordena per data", () => {
+    const today = "2026-11-04";
+    const g = groupDishes(
+      [
+        { id: "1", note: "Truita de patates", day: "2026-11-02" },
+        { id: "2", note: "truita de patates ", day: "2026-11-06" },
+        { id: "3", note: "Macarrons de l'àvia", day: "2026-11-05" },
+        { id: "4", note: "Sopa", day: "2026-10-30" },
+        { id: "5", note: "  ", day: "2026-11-05" },
+        { id: "6", note: null, day: "2026-11-05" },
+      ],
+      today,
+    );
+    expect(g.map((d) => [d.name, d.count, d.day])).toEqual([
+      ["Macarrons de l'àvia", 1, "2026-11-05"],
+      ["Truita de patates", 2, "2026-11-06"],
+      ["Sopa", 1, "2026-10-30"],
+    ]);
+    expect(g[1].entryIds).toEqual(["1", "2"]);
+    expect(dishKey("Macarrons de l'Àvia")).toBe(dishKey("macarrons de l avia"));
+  });
+});

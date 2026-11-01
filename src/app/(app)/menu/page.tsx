@@ -169,7 +169,14 @@ export default function MenuPage() {
                                   {e.recipes.title}
                                 </Link>
                               ) : (
-                                <span className="min-w-0 flex-1 truncate font-medium italic">{e.note ?? "—"}</span>
+                                <Link
+                                  href={e.note ? `/receptes/nova?plat=${encodeURIComponent(e.note)}` : "#"}
+                                  className="min-w-0 flex-1 truncate font-medium italic"
+                                  title="Plat sense recepta: toca per crear-la"
+                                >
+                                  {e.note ?? "—"}
+                                  <span className="ml-1.5 rounded-full bg-saffron-soft px-1.5 py-px text-[10px] font-bold not-italic uppercase text-saffron">sense recepta</span>
+                                </Link>
                               )}
                               {e.servings && e.servings !== household.servings && (
                                 <span className="flex shrink-0 items-center gap-0.5 text-xs text-muted">

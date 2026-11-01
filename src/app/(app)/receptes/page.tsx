@@ -7,6 +7,7 @@ import { Clock, Globe, Link2, Plus, Search, Users } from "lucide-react";
 import { useLiveTable } from "@/components/household";
 import { EmptyState, PageHeader, Sheet, Spinner } from "@/components/ui";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
+import { DishesWithoutRecipe } from "@/components/dishes-without-recipe";
 import { IMPORT_DRAFT_KEY } from "@/lib/recipes";
 import { normalizeText } from "@/lib/sections";
 import { COURSES, courseInfo, type Course } from "@/lib/courses";
@@ -50,6 +51,8 @@ export default function RecipesPage() {
           </div>
         }
       />
+
+      {!loading && <DishesWithoutRecipe recipes={recipes} />}
 
       {recipes.length > 0 && (
         <>

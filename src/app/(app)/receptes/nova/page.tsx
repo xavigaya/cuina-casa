@@ -7,6 +7,8 @@ import { useHousehold } from "@/components/household";
 import { PageHeader, Spinner } from "@/components/ui";
 import { IMPORT_DRAFT_KEY, draftFromRecipe, emptyDraft, ingredientToLine, loadRecipe, type RecipeDraft } from "@/lib/recipes";
 import { courseFromCategory } from "@/lib/courses";
+import { linkDishToRecipe } from "@/lib/dishes-without-recipe";
+import { toast } from "@/components/ui";
 import type { ImportedRecipe } from "@/lib/recipe-import";
 
 type StoredImport = ImportedRecipe & { translated?: boolean; original?: ImportedRecipe };
@@ -32,8 +34,16 @@ export default function NewRecipePage() {
   const [imported, setImported] = useState(false);
   const [copyOf, setCopyOf] = useState<string | null>(null);
   const [copyMissing, setCopyMissing] = useState(false);
+  const [dish, setDish] = useState<string | null>(null);
 
   useEffect(() => {
+    const dishName = new URLSearchParams(window.location.search).get("plat");
+    if (dishName) {
+      // Recepta per a un plat que s'havia afegit al menú sense recepta
+      setDish(dishName);
+      setDrafts({ catalan: { ...emptyDraft(household.servings), title: dishName.slice(0, 160) }, original: null });
+      return;
+    }
     const copyId = new URLSearchParams(window.location.search).get("copia");
     if (copyId) {
       // Duplicar una recepta per fer-ne una variació
@@ -72,7 +82,9 @@ export default function NewRecipePage() {
       <PageHeader
         title={copyOf ? "Nova variació" : imported ? "Revisa la recepta" : "Recepta nova"}
         subtitle={
-          copyOf
+          dish
+            ? "Quan la desis, quedarà enllaçada als àpats del menú amb aquest plat."
+            : copyOf
             ? `Còpia de «${copyOf}». Canvia el que vulguis: l'original no es modificarà.`
             : imported
               ? "Importada. Comprova els ingredients abans de desar-la."
@@ -99,7 +111,20 @@ export default function NewRecipePage() {
         </div>
       )}
       {/* La clau fa que l'editor es reiniciï en canviar entre la traducció i l'original */}
-      {initial && <RecipeEditor key={showOriginal ? "original" : "catala"} initial={initial} />}
+      {initial && (
+        <RecipeEditor
+          key={showOriginal ? "original" : "catala"}
+          initial={initial}
+          onSaved={
+            dish
+              ? async (id) => {
+                  const n = await linkDishToRecipe(household.id, dish, id);
+                  if (n) toast(n === 1 ? "Enllaçada a 1 àpat del menú" : `Enllaçada a ${n} àpats del menú`);
+                }
+              : undefined
+          }
+        />
+      )}
     </>
   );
 }

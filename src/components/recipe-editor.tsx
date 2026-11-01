@@ -17,7 +17,16 @@ import { deleteUploadedPhoto } from "@/lib/photo-upload";
 
 type Linkable = { id: string; title: string; is_component: boolean };
 
-export function RecipeEditor({ initial, recipeId }: { initial: RecipeDraft; recipeId?: string }) {
+export function RecipeEditor({
+  initial,
+  recipeId,
+  onSaved,
+}: {
+  initial: RecipeDraft;
+  recipeId?: string;
+  /** Es crida després de desar (abans d'anar a la fitxa) */
+  onSaved?: (id: string) => Promise<void>;
+}) {
   const router = useRouter();
   const supabase = supabaseBrowser();
   const { household, user } = useHousehold();
@@ -62,6 +71,7 @@ export function RecipeEditor({ initial, recipeId }: { initial: RecipeDraft; reci
       // Si s'ha canviat una foto pujada a l'app, s'esborra l'antiga del magatzem
       if (initial.image_url && initial.image_url !== draft.image_url) deleteUploadedPhoto(initial.image_url).catch(() => {});
       toast("Recepta desada");
+      if (onSaved) await onSaved(id).catch(() => {});
       router.replace(`/receptes/${id}`);
     } catch (err) {
       toast(`No s'ha pogut desar: ${(err as Error).message}`);
