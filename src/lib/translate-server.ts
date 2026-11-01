@@ -10,12 +10,12 @@ const APERTIUM = "https://apertium.org/apy/translate";
 const UA = "Mozilla/5.0 (compatible; CuinaCasa/1.0; +https://github.com/xavigaya/cuina-casa)";
 const MAX_CHARS = 3500;
 
-async function apertium(text: string): Promise<string | null> {
+async function apertium(text: string, pair = "spa|cat"): Promise<string | null> {
   try {
     const res = await fetch(APERTIUM, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8", "User-Agent": UA },
-      body: new URLSearchParams({ langpair: "spa|cat", q: text, markUnknown: "no" }).toString(),
+      body: new URLSearchParams({ langpair: pair, q: text, markUnknown: "no" }).toString(),
       signal: AbortSignal.timeout(10000),
     });
     if (!res.ok) return null;
@@ -31,7 +31,8 @@ async function apertium(text: string): Promise<string | null> {
  * en blocs de mida limitada; si en algun bloc no quadra el nombre de línies,
  * es tradueixen d'un en un. Torna null si el servei no respon.
  */
-export async function translateLines(lines: string[]): Promise<string[] | null> {
+export async function translateLines(lines: string[], pair: "spa|cat" | "cat|spa" = "spa|cat"): Promise<string[] | null> {
+  const fix = pair === "spa|cat" ? fixCatalanTranslation : (t: string) => t.replace(/[*#@](?=[\p{L}\d])/gu, "");
   const out: string[] = new Array(lines.length);
   const chunks: number[][] = [];
   let current: number[] = [];
@@ -50,17 +51,17 @@ export async function translateLines(lines: string[]): Promise<string[] | null> 
   const results = await Promise.all(
     chunks.map(async (idx) => {
       const text = idx.map((i) => lines[i].replace(/\s*\n\s*/g, " ")).join("\n");
-      const translated = await apertium(text);
+      const translated = await apertium(text, pair);
       if (translated == null) return false;
       const parts = translated.split("\n");
       if (parts.length === idx.length) {
-        idx.forEach((i, k) => (out[i] = fixCatalanTranslation(parts[k].trim())));
+        idx.forEach((i, k) => (out[i] = fix(parts[k].trim())));
         return true;
       }
       // No quadra: d'un en un
-      const singles = await Promise.all(idx.map((i) => apertium(lines[i])));
+      const singles = await Promise.all(idx.map((i) => apertium(lines[i], pair)));
       if (singles.some((s) => s == null)) return false;
-      idx.forEach((i, k) => (out[i] = fixCatalanTranslation(singles[k]!.trim())));
+      idx.forEach((i, k) => (out[i] = fix(singles[k]!.trim())));
       return true;
     }),
   );

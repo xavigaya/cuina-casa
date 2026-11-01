@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/manifest.webmanifest", "/sw.js", "/offline"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/manifest.webmanifest", "/sw.js", "/offline", "/api/prova-aliments"];
 
 /**
  * S'executa abans de cada pàgina: refresca la sessió de Supabase i
