@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isPrivateVercelHost } from "@/lib/site-url";
 
 const PUBLIC_PATHS = ["/login", "/auth/callback", "/manifest.webmanifest", "/sw.js", "/offline"];
 
@@ -8,6 +9,15 @@ const PUBLIC_PATHS = ["/login", "/auth/callback", "/manifest.webmanifest", "/sw.
  * envia a /login qui no hagi iniciat sessió.
  */
 export async function proxy(request: NextRequest) {
+  // Des d'una adreça privada de Vercel, tot es redirigeix a l'adreça pública (mateix camí).
+  // Així, si Supabase torna de l'inici de sessió a l'adreça antiga, el codi arriba igualment
+  // a l'adreça on s'ha començat a entrar i la sessió s'obre bé.
+  const host = request.headers.get("host") ?? request.nextUrl.hostname;
+  const publicUrl = publicOrigin();
+  if (publicUrl && isPrivateVercelHost(host.split(":")[0]) && new URL(publicUrl).host !== host) {
+    return NextResponse.redirect(new URL(request.nextUrl.pathname + request.nextUrl.search, publicUrl), 307);
+  }
+
   // Sense configuració no es pot comprovar la sessió: deixem passar i la pàgina ho explica
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     return NextResponse.next({ request });
@@ -57,3 +67,11 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|.*\\.(?:png|svg|jpg|jpeg|webp|ico)$).*)"],
 };
+
+/** Adreça pública al servidor (variable pròpia o domini de producció de Vercel). */
+function publicOrigin(): string | null {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL;
+  if (configured) return configured.replace(/\/$/, "");
+  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL ?? process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL;
+  return production ? `https://${production}` : null;
+}
