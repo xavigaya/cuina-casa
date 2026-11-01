@@ -35,18 +35,11 @@ async function get(url: string) {
 }
 
 export async function GET() {
-  const ing = await get("https://www.3cat.cat/tv3/cuines/receptes/ingredients/");
-  const slugs = [...new Set((ing.text.match(/\/tv3\/cuines\/[a-z0-9-]+\/receptes\//g) ?? []).map((h) => h.split("/")[3]))];
-  const ua = "Mozilla/5.0 (compatible; CuinaCasa/1.0; +https://github.com/xavigaya/cuina-casa)";
-  const tests = [
-    "https://www.pequerecetas.com/wp-json/wp/v2/posts?search=merluza&_fields=link&per_page=3",
-    "https://www.javirecetas.com/wp-json/wp/v2/posts?search=merluza&_fields=link&per_page=3",
-    "https://www.abc.es/recetasderechupete/?s=merluza",
-    "https://cookpad.com/es/buscar/merluza",
-    "https://www.3cat.cat/tv3/cuines/peix/receptes/",
-  ];
-  const uaTest = await Promise.all(tests.map(async (u) => {
-    try { const r = await fetch(u, { headers: { "User-Agent": ua }, signal: AbortSignal.timeout(9000) }); return { u, status: r.status }; } catch (e) { return { u, status: 0, e: (e as Error).message }; }
+  const cands = "peix lluc salmo bacalla tonyina verdura verdures carbasso carbassa espinacs brocoli albergina pebrot porro col coliflor bolets cigrons cigro mongetes llenties llentia pollastre ou ous gall-dindi conill arros pasta patata amanida amanides sopa crema tomaquets tomaquet ceba carn porc vedella xai marisc gambes musclos calamar sipia pop quinoa cuscus fruita poma".split(" ");
+  const res = await Promise.all(cands.map(async (c) => {
+    const r = await get(`https://www.3cat.cat/tv3/cuines/${c}/receptes/`);
+    const n = new Set(r.text.match(/\/tv3\/cuines\/recepta\/[a-z0-9-]+\/\d+\//g) ?? []).size;
+    return `${c}:${r.status}:${n}`;
   }));
-  return NextResponse.json({ ingStatus: ing.status, slugCount: slugs.length, slugs: slugs.join(" "), uaTest });
+  return NextResponse.json({ res: res.join(" ") });
 }
