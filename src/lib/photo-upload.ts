@@ -1,6 +1,8 @@
 import { supabaseBrowser } from "./supabase/client";
 
-export const PHOTO_BUCKET = "fotos-receptes";
+import { PHOTO_BUCKET } from "./photo-upload-constants";
+
+export { PHOTO_BUCKET };
 const MAX_SIDE = 1600;
 const MAX_INPUT_BYTES = 25 * 1024 * 1024;
 
@@ -74,4 +76,49 @@ export async function deleteUploadedPhoto(url: string | null | undefined): Promi
   const { data, error } = await supabase.from("recipes").select("id").eq("image_url", url).limit(1);
   if (error || (data && data.length > 0)) return; // encara la fa servir una altra recepta
   await supabase.storage.from(PHOTO_BUCKET).remove([decodeURIComponent(url.slice(i + marker.length))]);
+}
+
+/**
+ * Fa servir una foto d'un enllaç: primer la copia al magatzem de la llar (més fiable);
+ * si no és possible, comprova que el navegador la pugui mostrar i en fa servir l'enllaç.
+ */
+export async function photoFromUrl(householdId: string, rawUrl: string): Promise<string> {
+  const url = rawUrl.trim();
+  if (!/^https?:\/\/\S+$/i.test(url)) throw new PhotoError("Enganxa una adreça que comenci per http:// o https://");
+  let detail: string | null = null;
+  try {
+    const res = await fetch("/api/photo-from-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ householdId, url }),
+    });
+    const json = await res.json();
+    if (res.ok && json.url) return json.url as string;
+    if (json.error === "no_imatge") throw new PhotoError(json.detail);
+    detail = json.detail ?? null;
+  } catch (e) {
+    if (e instanceof PhotoError) throw e;
+  }
+  // No s'ha pogut copiar (p. ex. la web bloqueja el servidor): provem de mostrar-la directament
+  if (await canDisplay(url)) return url;
+  throw new PhotoError(
+    `No s'ha pogut fer servir aquesta imatge${detail ? ` (${detail})` : ""}. Prova de desar-la a l'ordinador i pujar-la amb el botó.`,
+  );
+}
+
+function canDisplay(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.referrerPolicy = "no-referrer";
+    const timer = setTimeout(() => resolve(false), 10000);
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(img.naturalWidth > 0);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    img.src = url;
+  });
 }

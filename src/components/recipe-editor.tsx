@@ -70,6 +70,7 @@ export function RecipeEditor({ initial, recipeId }: { initial: RecipeDraft; reci
   }
 
   return (
+    <>
     <form onSubmit={submit} className="space-y-6">
       {/* Foto */}
       <div>
@@ -291,26 +292,28 @@ export function RecipeEditor({ initial, recipeId }: { initial: RecipeDraft; reci
         </button>
       </div>
 
-      <LinkSheet
-        ingredient={linking}
-        recipes={linkable}
-        onClose={() => setLinking(null)}
-        onPick={(id) => {
-          if (linking) set("links", { ...draft.links, [ingredientKey(linking)]: id });
-          setLinking(null);
-        }}
-      />
-
-      <PhotoSearchSheet
-        open={photoOpen}
-        initialQuery={draft.title}
-        onClose={() => setPhotoOpen(false)}
-        onPick={(url) => {
-          set("image_url", url);
-          setPhotoOpen(false);
-        }}
-      />
     </form>
+
+    <LinkSheet
+      ingredient={linking}
+      recipes={linkable}
+      onClose={() => setLinking(null)}
+      onPick={(id) => {
+        if (linking) set("links", { ...draft.links, [ingredientKey(linking)]: id });
+        setLinking(null);
+      }}
+    />
+
+    <PhotoSearchSheet
+      open={photoOpen}
+      initialQuery={draft.title}
+      onClose={() => setPhotoOpen(false)}
+      onPick={(url) => {
+        set("image_url", url);
+        setPhotoOpen(false);
+      }}
+    />
+    </>
   );
 }
 

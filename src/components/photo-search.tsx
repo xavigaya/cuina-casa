@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, Search, Upload } from "lucide-react";
 import { Sheet, Spinner } from "./ui";
 import { useHousehold } from "./household";
-import { PhotoError, uploadRecipePhoto } from "@/lib/photo-upload";
+import { PhotoError, photoFromUrl, uploadRecipePhoto } from "@/lib/photo-upload";
 import type { ImageResult } from "@/lib/image-search";
 
 /** Finestra per buscar una foto del plat a Internet i triar-la. */
@@ -29,6 +29,21 @@ export function PhotoSearchSheet({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+
+  const [linking, setLinking] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+
+  /** Fa servir una foto d'un enllaç (enganxat o dels resultats): es copia al magatzem si és possible. */
+  async function applyLink(url: string) {
+    setLinking(url);
+    setLinkError(null);
+    try {
+      onPick(await photoFromUrl(household.id, url));
+    } catch (e) {
+      setLinkError(e instanceof PhotoError ? e.message : "No s'ha pogut fer servir aquesta imatge.");
+    }
+    setLinking(null);
+  }
 
   async function upload(file: File | undefined) {
     if (!file) return;
@@ -65,6 +80,7 @@ export function PhotoSearchSheet({
       setResults(null);
       setPasted("");
       setUploadError(null);
+      setLinkError(null);
       if (initialQuery.trim()) search(initialQuery);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,6 +122,7 @@ export function PhotoSearchSheet({
         className="mb-4 flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
+          e.stopPropagation(); // que no s'enviï el formulari de la recepta
           search(query);
         }}
       >
@@ -130,11 +147,18 @@ export function PhotoSearchSheet({
               <li key={r.url}>
                 <button
                   className="group relative block aspect-square w-full overflow-hidden rounded-xl bg-line/60"
-                  onClick={() => onPick(r.url)}
+                  type="button"
+                  onClick={() => applyLink(r.url)}
+                  disabled={linking !== null}
                   title={r.title}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={r.thumb} alt={r.title} className="size-full object-cover transition group-active:scale-95" loading="lazy" referrerPolicy="no-referrer" />
+                  {linking === r.url && (
+                    <span className="absolute inset-0 grid place-items-center bg-black/40">
+                      <Spinner className="!border-white/40 !border-t-white" />
+                    </span>
+                  )}
                   <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pb-1 pt-4 text-left text-[10px] text-white">
                     {r.source}
                     {r.license ? ` · ${r.license}` : ""}
@@ -148,7 +172,7 @@ export function PhotoSearchSheet({
       ) : null}
 
       <div className="mt-5 border-t border-line pt-4">
-        <p className="mb-2 text-sm text-muted">També pots buscar-la a Google, copiar l'adreça de la imatge i enganxar-la aquí:</p>
+        <p className="mb-2 text-sm text-muted">També pots enganxar l'adreça d'una imatge (per exemple, de Google Imatges: botó dret → «Copia l'adreça de la imatge»):</p>
         <a
           className="btn-secondary mb-3 w-full"
           href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(query || initialQuery)}`}
@@ -161,14 +185,16 @@ export function PhotoSearchSheet({
           className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (/^https?:\/\//.test(pasted.trim())) onPick(pasted.trim());
+            e.stopPropagation(); // que no s'enviï el formulari de la recepta
+            if (/^https?:\/\//.test(pasted.trim())) applyLink(pasted.trim());
           }}
         >
           <input className="input" type="url" inputMode="url" placeholder="https://…" value={pasted} onChange={(e) => setPasted(e.target.value)} aria-label="Adreça de la imatge" />
-          <button className="btn-secondary" disabled={!/^https?:\/\//.test(pasted.trim())}>
-            Fes-la servir
+          <button className="btn-secondary shrink-0" disabled={!/^https?:\/\//.test(pasted.trim()) || linking !== null}>
+            {linking === pasted.trim() ? <Spinner className="!size-4" /> : "Fes-la servir"}
           </button>
         </form>
+        {linkError && <p className="mt-2 rounded-xl bg-tomato-soft p-2 text-sm text-tomato">{linkError}</p>}
       </div>
     </Sheet>
   );
