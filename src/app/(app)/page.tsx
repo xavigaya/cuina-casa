@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
-import { AlertTriangle, ArrowRight, CalendarDays, ShoppingCart } from "lucide-react";
-import { useHousehold, useLiveTable } from "@/components/household";
+import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, ArrowRight, CalendarDays, Lightbulb, ShoppingCart } from "lucide-react";
+import { useHousehold, useLiveTable, usePermissions } from "@/components/household";
+import { isProposal } from "@/lib/permissions";
 import { Spinner, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { dayName, expiryLabel, expiryStatus, formatShortDate, toISODate } from "@/lib/dates";
@@ -27,6 +28,17 @@ export default function HomePage() {
     filter: (q) => q.eq("day", today),
     deps: [today],
   });
+
+  // Propostes pendents d'aprovar (només les veuen com a tasca els privilegiats)
+  const { privileged } = usePermissions();
+  const [pending, setPending] = useState<{ recipes: number; meals: number }>({ recipes: 0, meals: 0 });
+  useEffect(() => {
+    if (!privileged) return;
+    Promise.all([
+      supabase.from("recipes").select("id", { count: "exact", head: true }).eq("household_id", household.id).eq("status", "proposta"),
+      supabase.from("meal_plan").select("id", { count: "exact", head: true }).eq("household_id", household.id).eq("status", "proposta").gte("day", today),
+    ]).then(([r, m]) => setPending({ recipes: r.error ? 0 : (r.count ?? 0), meals: m.error ? 0 : (m.count ?? 0) }));
+  }, [privileged, supabase, household.id, today]);
 
   const warn = household.expiry_warning_days;
   const expiring = useMemo(
@@ -74,6 +86,29 @@ export default function HomePage() {
           {firstName ? `, ${firstName}` : ""}
         </h1>
       </header>
+
+      {privileged && pending.recipes + pending.meals > 0 && (
+        <section className="card flex items-start gap-3 border-herb/50 p-4">
+          <span className="grid size-10 shrink-0 place-items-center rounded-2xl bg-herb-soft text-herb">
+            <Lightbulb className="size-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">Propostes per revisar</p>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold text-herb">
+              {pending.recipes > 0 && (
+                <Link href="/receptes" className="flex items-center gap-1">
+                  {pending.recipes === 1 ? "1 recepta" : `${pending.recipes} receptes`} <ArrowRight className="size-3.5" />
+                </Link>
+              )}
+              {pending.meals > 0 && (
+                <Link href="/menu" className="flex items-center gap-1">
+                  {pending.meals === 1 ? "1 plat del menú" : `${pending.meals} plats del menú`} <ArrowRight className="size-3.5" />
+                </Link>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {expiring.length > 0 && (
         <section className="card overflow-hidden border-saffron/50">
@@ -136,6 +171,7 @@ export default function HomePage() {
                     ) : (
                       <span className="font-display text-lg italic">{e.note}</span>
                     )}
+                    {isProposal(e) && <span className="rounded-full bg-herb px-1.5 py-px text-[10px] font-bold uppercase text-white">proposta</span>}
                   </li>
                 )),
             )}

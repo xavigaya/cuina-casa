@@ -16,6 +16,8 @@ App web familiar per gestionar la cuina i les compres de casa. Funciona al mòbi
 - **Menú setmanal** (esmorzar, dinar i sopar) que **genera la llista de la compra** sumant ingredients, adaptant les racions i restant el que ja hi ha a casa.
 - **Valor nutricional aproximat** de cada recepta per ració (kcal, carbohidrats, proteïnes, greixos i fibra), comparació amb el **Plat de Harvard** (½ verdura i fruita, ¼ cereals integrals, ¼ proteïna saludable) amb consells breus, i càlcul recursiu dels preelaborats. Al menú setmanal, totals per dia, mitjana de la setmana, varietat de proteïnes i **propostes compensatòries** per al sopar i el cap de setmana a partir de les receptes guardades. Es basa en una taula de ~200 aliments (valors de referència BEDCA/USDA, editable des de l'app) i aprofita les dades d'Open Food Facts dels productes escanejats. *És una aproximació orientativa, no un consell mèdic.*
 - **Cerca de receptes a Internet** dins de webs concretes (Cuines de TV3, Cookpad, Recetas de Rechupete, PequeRecetas i Javirecetas), sense claus ni costos. Des del menú, quan cap recepta guardada no compensa un desequilibri, busca plats que el compensin i els valora segons el Plat de Harvard; també es pot buscar lliurement des de Receptes. Cada resultat es pot importar i afegir al menú amb un botó. La llista de webs és a `src/lib/recipe-sites.ts`: si alguna canvia el disseny i deixa de funcionar, la cerca continua amb les altres.
+- **Permisos per llar**: hi ha persones **privilegiades** (ho poden fer tot) i **col·laboradores**. Un col·laborador proposa receptes i plats del menú (queden marcats com a *proposta* fins que un privilegiat els aprova o els rebutja), afegeix coses a la llista, marca el que ha comprat i porta el rebost, però només edita o esborra el que ha afegit ell. Qui crea la llar és privilegiat; qui hi entra amb el codi comença com a col·laborador, i els permisos es canvien a Ajustos.
+- **Registre d'accions** amb qui ha fet cada canvi (receptes, menú, llista, rebost, aliments i llar) i botó **Desfés**: cadascú pot desfer les seves accions i els privilegiats, qualsevol. Una recepta esborrada per error torna sencera, amb els ingredients, els àpats del menú i els preelaborats on s'usava. Es guarden els últims 90 dies.
 - **Avisos de caducitat** a la pantalla d'inici i, opcionalment, com a notificació del mòbil.
 - **Escaneig de codis de barres** amb la càmera, amb cerca a [Open Food Facts](https://world.openfoodfacts.org) i memòria dels productes de casa.
 - **Instal·lable** (PWA) i amb còpia local de la llista i el rebost per consultar-les sense cobertura.
@@ -93,7 +95,7 @@ npm test                     # proves de la lògica (unitats, llista, importaci�
 ```
 src/
   app/
-    (app)/            pàgines amb sessió: inici, llista, rebost, receptes, menu, ajustos
+    (app)/            pàgines amb sessió: inici, llista, rebost, receptes, menu, registre, ajustos
     api/import-recipe servei que llegeix receptes d'una web
     auth/callback     retorn de l'inici de sessió de Google
     login/            pantalla d'entrada
@@ -106,7 +108,9 @@ public/sw.js          service worker (instal·lació i ús sense connexió)
 
 ## Seguretat
 
-Cada taula té *Row Level Security*: una persona només pot llegir i modificar les dades de les llars de les quals és membre. Per entrar en una llar cal el codi d'invitació, que es pot canviar en qualsevol moment des d'Ajustos.
+Cada taula té *Row Level Security*: una persona només pot llegir i modificar les dades de les llars de les quals és membre. Per entrar en una llar cal el codi d'invitació, que una persona privilegiada pot canviar en qualsevol moment des d'Ajustos.
+
+Els permisos (privilegiat i col·laborador) també els fa complir la base de dades, no només l'app: polítiques per rol a receptes, ingredients, menú, llista i aliments, i disparadors que marquen com a proposta el que afegeix un col·laborador i impedeixen canviar-se el rol. El registre l'escriuen disparadors i només es pot desfer amb la funció `undo_actions`, que comprova qui ho demana.
 
 ## Actualitzacions de la base de dades
 
@@ -118,5 +122,6 @@ Quan una nova versió afegeix un fitxer a `supabase/migrations/`, cal executar-l
 | `0002_tipus_plat_i_preelaborats.sql` | Tipus de plat, preelaborats i receptes enllaçades |
 | `0003_dades_nutricionals.sql` | Taula d'aliments amb valors nutricionals (217 aliments de referència) |
 | `0004_fotos_receptes.sql` | Magatzem de fotos per pujar imatges pròpies de les receptes |
+| `0005_permisos_i_registre.sql` | Permisos per llar (privilegiat i col·laborador), propostes de receptes i menú, registre d'accions i desfer |
 
 La llista d'aliments de referència és a `supabase/data/aliments.tsv`. Si la modifiques, regenera l'SQL amb `python3 scripts/generar-aliments.py` i executa'l a Supabase (es pot repetir: actualitza els aliments existents).

@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDown, ArrowUp, ImagePlus, Link2, Plus, Trash2, X } from "lucide-react";
-import { useHousehold } from "./household";
+import { useHousehold, usePermissions } from "./household";
 import { PhotoSearchSheet } from "./photo-search";
 import { Sheet, toast } from "./ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -13,7 +13,6 @@ import { COURSES } from "@/lib/courses";
 import { normalizeText, sectionInfo } from "@/lib/sections";
 import { UNIT_OPTIONS, formatQuantity } from "@/lib/units";
 import { parseQty, qtyToString } from "./fields";
-import { deleteUploadedPhoto } from "@/lib/photo-upload";
 
 type Linkable = { id: string; title: string; is_component: boolean };
 
@@ -30,6 +29,7 @@ export function RecipeEditor({
   const router = useRouter();
   const supabase = supabaseBrowser();
   const { household, user } = useHousehold();
+  const { privileged } = usePermissions();
   const [draft, setDraft] = useState(initial);
   const [steps, setSteps] = useState<string[]>(() => {
     const s = splitSteps(initial.instructions);
@@ -68,9 +68,8 @@ export function RecipeEditor({
         .filter(Boolean);
       const instructions = steps.map((s) => s.trim()).filter(Boolean).join("\n");
       const id = await saveRecipe(household.id, user.id, { ...draft, tags, instructions }, linkable, recipeId);
-      // Si s'ha canviat una foto pujada a l'app, s'esborra l'antiga del magatzem
-      if (initial.image_url && initial.image_url !== draft.image_url) deleteUploadedPhoto(initial.image_url).catch(() => {});
-      toast("Recepta desada");
+      // La foto antiga es conserva al magatzem perquè l'edició es pugui desfer des del Registre
+      toast(privileged ? "Recepta desada" : "Desada com a proposta: una persona privilegiada l'ha d'aprovar");
       if (onSaved) await onSaved(id).catch(() => {});
       router.replace(`/receptes/${id}`);
     } catch (err) {

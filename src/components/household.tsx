@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { permissionsFor, type Permissions } from "@/lib/permissions";
 import type { User } from "@supabase/supabase-js";
 import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
 import { ConfigMissing } from "./config-missing";
@@ -116,6 +117,12 @@ function HouseholdLoader({ children }: { children: ReactNode }) {
       {children}
     </HouseholdContext.Provider>
   );
+}
+
+/** Què pot fer l'usuari actual en aquesta llar */
+export function usePermissions(): Permissions {
+  const { members, user } = useHousehold();
+  return useMemo(() => permissionsFor(members, user.id), [members, user.id]);
 }
 
 /**

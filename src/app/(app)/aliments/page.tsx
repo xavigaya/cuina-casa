@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Merge, Plus, Search, Trash2 } from "lucide-react";
-import { useHousehold } from "@/components/household";
+import { useHousehold, usePermissions } from "@/components/household";
 import { Disclaimer } from "@/components/nutrition";
 import { PageHeader, Sheet, Spinner, toast } from "@/components/ui";
 import { parseQty, qtyToString } from "@/components/fields";
@@ -22,6 +22,7 @@ type Draft = Partial<Food> & { name: string };
 export default function FoodsPage() {
   const supabase = supabaseBrowser();
   const { household } = useHousehold();
+  const { privileged } = usePermissions();
   const [foods, setFoods] = useState<Food[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -128,6 +129,7 @@ export default function FoodsPage() {
         </div>
       ) : (
         <>
+          {privileged && (
           <Link href="/aliments/unificar" className="card mb-4 flex items-center gap-3 p-4">
             <Merge className="size-5 shrink-0 text-herb" />
             <span className="flex-1">
@@ -136,6 +138,7 @@ export default function FoodsPage() {
             </span>
             <ChevronRight className="size-5 text-muted" />
           </Link>
+          )}
           <div className="relative mb-3">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input className="input !rounded-full !pl-10" placeholder="Busca un aliment…" value={query} onChange={(e) => setQuery(e.target.value)} />
@@ -186,7 +189,8 @@ export default function FoodsPage() {
             draft={editing.draft}
             focusWeight={editing.focusWeight}
             onSave={save}
-            onDelete={editing.draft.household_id ? () => remove(editing.draft as Food) : undefined}
+            onDelete={editing.draft.household_id && privileged ? () => remove(editing.draft as Food) : undefined}
+            readOnly={!!editing.draft.household_id && !privileged}
           />
         )}
       </Sheet>
@@ -220,7 +224,19 @@ function NumberField({ id, label, value, onChange, suffix }: { id: string; label
   );
 }
 
-function FoodForm({ draft: initial, focusWeight, onSave, onDelete }: { draft: Draft; focusWeight?: boolean; onSave: (d: Draft) => void; onDelete?: () => void }) {
+function FoodForm({
+  draft: initial,
+  focusWeight,
+  onSave,
+  onDelete,
+  readOnly,
+}: {
+  draft: Draft;
+  focusWeight?: boolean;
+  onSave: (d: Draft) => void;
+  onDelete?: () => void;
+  readOnly?: boolean;
+}) {
   const [d, setD] = useState<Draft>(initial);
   const [aliasText, setAliasText] = useState((initial.aliases ?? []).join(", "));
   const isReference = !!initial.id && !initial.household_id;
@@ -292,7 +308,11 @@ function FoodForm({ draft: initial, focusWeight, onSave, onDelete }: { draft: Dr
             <Trash2 className="size-4" />
           </button>
         )}
-        <button className="btn-primary flex-1">{isReference ? "Desa una còpia per a casa" : "Desa"}</button>
+        {readOnly ? (
+          <p className="flex-1 rounded-xl bg-line/50 p-3 text-center text-sm text-muted">Només una persona privilegiada pot corregir els aliments de casa.</p>
+        ) : (
+          <button className="btn-primary flex-1">{isReference ? "Desa una còpia per a casa" : "Desa"}</button>
+        )}
       </div>
     </form>
   );

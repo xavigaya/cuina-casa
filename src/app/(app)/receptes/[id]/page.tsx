@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarPlus, Check, Clock, Copy, ExternalLink, ImagePlus, Languages, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
-import { useHousehold } from "@/components/household";
+import { ArrowLeft, CalendarPlus, Check, Clock, Copy, ExternalLink, ImagePlus, Languages, Lightbulb, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2, X } from "lucide-react";
+import { useHousehold, usePermissions } from "@/components/household";
+import { canModify, isProposal } from "@/lib/permissions";
+import { setStatus, undoLatest } from "@/lib/proposals";
 import { Sheet, Spinner, toast } from "@/components/ui";
 import { PhotoSearchSheet } from "@/components/photo-search";
 import { RecipeNutritionCard } from "@/components/nutrition";
@@ -12,7 +14,6 @@ import { MissingDataHelper } from "@/components/missing-data";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
 import type { OnlineRecipe } from "@/lib/online-recipes";
 import { photoFromUrl } from "@/lib/photo-upload";
-import { deleteUploadedPhoto } from "@/lib/photo-upload";
 import { useNutrition } from "@/lib/use-nutrition";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { loadRecipe, splitSteps } from "@/lib/recipes";
@@ -29,7 +30,8 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const { id } = use(params);
   const router = useRouter();
   const supabase = supabaseBrowser();
-  const { household, user } = useHousehold();
+  const { household, user, members } = useHousehold();
+  const perms = usePermissions();
   const [recipe, setRecipe] = useState<RecipeWithIngredients | null | undefined>(undefined);
   const [pantryKeys, setPantryKeys] = useState<Set<string>>(new Set());
   const [servings, setServings] = useState(household.servings);
@@ -81,6 +83,8 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   }
   if (recipe === null) return <p className="py-16 text-center text-muted">No s'ha trobat la recepta.</p>;
 
+  const editable = canModify(perms, recipe);
+  const author = recipe.created_by ? members.find((m) => m.user_id === recipe.created_by)?.display_name : null;
   const factor = servings / recipe.servings;
   const isAtHome = (name: string, subId: string | null) =>
     pantryKeys.has(ingredientKey(name)) || (!!subId && !!linkedTitles[subId] && pantryKeys.has(ingredientKey(linkedTitles[subId])));
@@ -189,12 +193,37 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
     toast(`Recepta completada amb la de ${r.site}`);
   }
 
-  async function remove() {
-    if (!confirm(`Segur que vols esborrar "${recipe!.title}"?`)) return;
-    await supabase.from("recipes").delete().eq("id", recipe!.id);
-    deleteUploadedPhoto(recipe!.image_url).catch(() => {});
-    toast("Recepta esborrada");
+  async function remove(reject = false) {
+    const r = recipe!;
+    const question = reject ? `Rebutges la proposta "${r.title}"? S'esborrarà (es pot desfer des del Registre).` : `Segur que vols esborrar "${r.title}"?`;
+    if (!confirm(question)) return;
+    const { error } = await supabase.from("recipes").delete().eq("id", r.id);
+    if (error) {
+      toast("No s'ha pogut esborrar");
+      return;
+    }
+    // La foto no s'esborra del magatzem: així, si es desfà, la recepta torna sencera
+    toast(reject ? "Proposta rebutjada" : "Recepta esborrada", {
+      label: "Desfés",
+      run: async () => {
+        const err = await undoLatest("recipes", r.id);
+        if (err) toast(err);
+        else {
+          toast("Recepta recuperada");
+          router.push(`/receptes/${r.id}`);
+        }
+      },
+    });
     router.replace("/receptes");
+  }
+
+  async function approve() {
+    const err = await setStatus("recipes", [recipe!.id], "aprovada");
+    if (err) toast("No s'ha pogut aprovar");
+    else {
+      setRecipe({ ...recipe!, status: "aprovada" });
+      toast("Recepta aprovada");
+    }
   }
 
   return (
@@ -204,26 +233,50 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           <ArrowLeft className="size-5" /> Receptes
         </Link>
         <div className="flex">
-          <Link href={`/receptes/${recipe.id}/editar`} className="btn-ghost !px-3" aria-label="Edita" title="Edita">
-            <Pencil className="size-5" />
-          </Link>
+          {editable && (
+            <Link href={`/receptes/${recipe.id}/editar`} className="btn-ghost !px-3" aria-label="Edita" title="Edita">
+              <Pencil className="size-5" />
+            </Link>
+          )}
           <Link href={`/receptes/nova?copia=${recipe.id}`} className="btn-ghost !px-3" aria-label="Duplica per fer-ne una variació" title="Duplica">
             <Copy className="size-5" />
           </Link>
-          <button className="btn-ghost !px-3" onClick={remove} aria-label="Esborra">
-            <Trash2 className="size-5" />
-          </button>
+          {editable && (
+            <button className="btn-ghost !px-3" onClick={() => remove()} aria-label="Esborra">
+              <Trash2 className="size-5" />
+            </button>
+          )}
         </div>
       </div>
+
+      {isProposal(recipe) && (
+        <div className="mb-5 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-herb/50 bg-herb-soft/60 p-3 text-sm">
+          <Lightbulb className="size-5 shrink-0 text-herb" />
+          <p className="min-w-0 flex-1">
+            <span className="font-semibold">Proposta{author ? ` de ${author}` : ""}.</span>{" "}
+            {perms.privileged ? "Revisa-la i aprova-la perquè formi part del receptari." : "Pendent que una persona privilegiada l'aprovi."}
+          </p>
+          {perms.privileged && (
+            <div className="flex shrink-0 gap-2">
+              <button className="flex items-center gap-1 rounded-full bg-paper px-3 py-1.5 text-xs font-bold text-tomato ring-1 ring-line" onClick={() => remove(true)}>
+                <X className="size-3.5" /> Rebutja
+              </button>
+              <button className="flex items-center gap-1 rounded-full bg-herb px-3 py-1.5 text-xs font-bold text-paper" onClick={approve}>
+                <Check className="size-3.5" /> Aprova
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {recipe.image_url ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={recipe.image_url} alt="" className="mb-5 aspect-[16/10] w-full rounded-[var(--radius-card)] object-cover" referrerPolicy="no-referrer" />
-      ) : (
+      ) : editable ? (
         <button className="btn-ghost -ml-3 mb-2 !px-3 text-sm" onClick={() => setPhotoOpen(true)}>
           <ImagePlus className="size-4" /> Afegeix una foto
         </button>
-      )}
+      ) : null}
 
       {(course || recipe.is_component) && (
         <div className="mb-2 flex flex-wrap gap-2">
@@ -260,7 +313,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
         )}
       </div>
 
-      {missingParts.length > 0 && (
+      {editable && missingParts.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-saffron/60 bg-saffron-soft/60 p-3 text-sm">
           <p className="min-w-0 flex-1">A aquesta recepta li falten {missingParts.join(" i ")}.</p>
           <button
@@ -278,7 +331,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
         </div>
       )}
 
-      {isSpanish && (
+      {editable && isSpanish && (
         <div className="mt-4 flex items-center gap-3 rounded-2xl bg-herb-soft/60 p-3 text-sm">
           <Languages className="size-4 shrink-0 text-herb" />
           <p className="flex-1">Aquesta recepta és en castellà.</p>
@@ -407,10 +460,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           setPhotoOpen(false);
           const { error } = await supabase.from("recipes").update({ image_url: url }).eq("id", recipe.id);
           if (error) toast("No s'ha pogut desar la foto");
-          else {
-            if (recipe.image_url !== url) deleteUploadedPhoto(recipe.image_url).catch(() => {});
-            setRecipe({ ...recipe, image_url: url });
-          }
+          else setRecipe({ ...recipe, image_url: url });
         }}
       />
 
@@ -426,7 +476,11 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             recipe_id: recipe.id,
             servings: servings === household.servings ? null : servings,
           });
-          toast(error ? "No s'ha pogut afegir al menú" : `Afegida al menú: ${dayName(new Date(day + "T00:00"))} (${meal})`);
+          toast(
+            error
+              ? "No s'ha pogut afegir al menú"
+              : `${perms.privileged ? "Afegida al menú" : "Proposada per al menú"}: ${dayName(new Date(day + "T00:00"))} (${meal})`,
+          );
         }}
       />
     </article>

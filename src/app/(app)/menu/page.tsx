@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Search, ShoppingCart, Users, X } from "lucide-react";
-import { useHousehold, useLiveTable } from "@/components/household";
+import { Check, CheckCheck, ChevronLeft, ChevronRight, Plus, Search, ShoppingCart, Users, X } from "lucide-react";
+import { useHousehold, useLiveTable, usePermissions } from "@/components/household";
+import { canModify, isProposal } from "@/lib/permissions";
+import { setStatus, undoLatest } from "@/lib/proposals";
 import { PageHeader, Sheet, Spinner, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { addDays, dayName, formatShortDate, formatWeekRange, startOfWeek, toISODate, weekDays } from "@/lib/dates";
@@ -21,7 +23,8 @@ type Entry = MealPlanEntry & { recipes: Pick<Recipe, "id" | "title" | "servings"
 
 export default function MenuPage() {
   const supabase = supabaseBrowser();
-  const { household, user } = useHousehold();
+  const { household, user, members } = useHousehold();
+  const perms = usePermissions();
   const [monday, setMonday] = useState(() => startOfWeek(new Date()));
   const from = toISODate(monday);
   const to = toISODate(addDays(monday, 6));
@@ -55,7 +58,7 @@ export default function MenuPage() {
     const { error } = await supabase
       .from("meal_plan")
       .insert(proposal.recipes.map((r) => ({ household_id: household.id, day, meal, recipe_id: r.id })));
-    toast(error ? "No s'ha pogut afegir" : `Afegit al ${MEALS.find((m) => m.id === meal)?.label.toLowerCase()}`);
+    toast(error ? "No s'ha pogut afegir" : `${perms.privileged ? "Afegit al" : "Proposat per al"} ${MEALS.find((m) => m.id === meal)?.label.toLowerCase()}`);
     reload();
   }
 
@@ -72,7 +75,17 @@ export default function MenuPage() {
     return map;
   }, [entries]);
 
-  const upcomingWithRecipe = entries.filter((e) => e.recipe_id && e.day >= todayISO);
+  // Les propostes pendents no compten per a la llista de la compra fins que s'aproven
+  const upcomingWithRecipe = entries.filter((e) => e.recipe_id && e.day >= todayISO && !isProposal(e));
+  const proposals = entries.filter(isProposal);
+  const authorName = (id: string | null) => members.find((m) => m.user_id === id)?.display_name ?? null;
+
+  async function approve(ids: string[]) {
+    setRows((prev) => prev.map((e) => (ids.includes(e.id) ? { ...e, status: "aprovada" } : e)));
+    const err = await setStatus("meal_plan", ids, "aprovada");
+    toast(err ? "No s'ha pogut aprovar" : ids.length > 1 ? `${ids.length} propostes aprovades` : "Proposta aprovada");
+    reload();
+  }
 
   async function generateList() {
     if (!upcomingWithRecipe.length) return;
@@ -92,12 +105,27 @@ export default function MenuPage() {
     setSlot(null);
     const { error } = await supabase.from("meal_plan").insert({ household_id: household.id, day: s.day, meal: s.meal, ...values });
     if (error) toast("No s'ha pogut afegir");
+    else if (!perms.privileged) toast("Proposta afegida: una persona privilegiada l'ha d'aprovar");
     reload();
   }
 
-  async function removeEntry(id: string) {
-    setRows((prev) => prev.filter((e) => e.id !== id));
-    await supabase.from("meal_plan").delete().eq("id", id);
+  async function removeEntry(e: Entry) {
+    setRows((prev) => prev.filter((x) => x.id !== e.id));
+    const { error } = await supabase.from("meal_plan").delete().eq("id", e.id);
+    if (error) {
+      toast("No s'ha pogut treure");
+      reload();
+      return;
+    }
+    const rejected = isProposal(e) && e.created_by !== user.id;
+    toast(rejected ? "Proposta rebutjada" : "Tret del menú", {
+      label: "Desfés",
+      run: async () => {
+        const err = await undoLatest("meal_plan", e.id);
+        toast(err ?? "Recuperat");
+        reload();
+      },
+    });
   }
 
   return (
@@ -116,6 +144,22 @@ export default function MenuPage() {
           <ChevronRight className="size-5" />
         </button>
       </div>
+
+      {perms.privileged && proposals.length > 0 && (
+        <div className="mb-4 flex items-center gap-3 rounded-2xl border-2 border-herb/50 bg-herb-soft/60 p-3 text-sm">
+          <p className="min-w-0 flex-1">
+            <span className="font-semibold">{proposals.length === 1 ? "1 proposta" : `${proposals.length} propostes`}</span> per revisar aquesta setmana.
+          </p>
+          <button className="flex shrink-0 items-center gap-1 rounded-full bg-herb px-3 py-1.5 text-xs font-bold text-paper" onClick={() => approve(proposals.map((p) => p.id))}>
+            <CheckCheck className="size-3.5" /> Aprova-les totes
+          </button>
+        </div>
+      )}
+      {!perms.privileged && proposals.some((p) => p.created_by === user.id) && (
+        <p className="mb-4 rounded-2xl bg-herb-soft/60 p-3 text-sm">
+          Els plats que afegeixes queden com a <span className="font-semibold">proposta</span> fins que una persona privilegiada els aprova.
+        </p>
+      )}
 
       <button className="btn-primary mb-6 w-full" onClick={generateList} disabled={busy || upcomingWithRecipe.length === 0}>
         <ShoppingCart className="size-4" />
@@ -159,8 +203,14 @@ export default function MenuPage() {
                       <div key={m.id} className="flex items-start gap-3">
                         <span className="w-16 shrink-0 pt-2 text-xs font-semibold uppercase tracking-wide text-muted">{m.label}</span>
                         <div className="min-w-0 flex-1 space-y-1.5">
-                          {list.map((e) => (
-                            <div key={e.id} className="flex items-center gap-2 rounded-xl bg-paper px-3 py-2">
+                          {list.map((e) => {
+                            const proposal = isProposal(e);
+                            const author = proposal ? authorName(e.created_by) : null;
+                            return (
+                            <div
+                              key={e.id}
+                              className={`flex items-center gap-2 rounded-xl px-3 py-2 ${proposal ? "border border-dashed border-herb/70 bg-herb-soft/40" : "bg-paper"}`}
+                            >
                               {e.recipes ? (
                                 <Link href={`/receptes/${e.recipes.id}`} className="min-w-0 flex-1 truncate font-medium">
                                   {courseInfo(e.recipes.course) && (
@@ -183,11 +233,32 @@ export default function MenuPage() {
                                   <Users className="size-3" /> {e.servings}
                                 </span>
                               )}
-                              <button className="-mr-1 shrink-0 p-1 text-muted" onClick={() => removeEntry(e.id)} aria-label="Treu del menú">
-                                <X className="size-4" />
-                              </button>
+                              {proposal && (
+                                <span
+                                  className="shrink-0 rounded-full bg-herb px-1.5 py-px text-[10px] font-bold uppercase text-white"
+                                  title={author ? `Proposta de ${author}` : "Proposta pendent d'aprovar"}
+                                >
+                                  proposta
+                                </span>
+                              )}
+                              {proposal && perms.privileged && (
+                                <button className="shrink-0 rounded-full p-1 text-herb" onClick={() => approve([e.id])} aria-label="Aprova la proposta" title="Aprova">
+                                  <Check className="size-4" strokeWidth={3} />
+                                </button>
+                              )}
+                              {canModify(perms, e) && (
+                                <button
+                                  className="-mr-1 shrink-0 p-1 text-muted"
+                                  onClick={() => removeEntry(e)}
+                                  aria-label={proposal && e.created_by !== user.id ? "Rebutja la proposta" : "Treu del menú"}
+                                  title={proposal && e.created_by !== user.id ? "Rebutja" : "Treu"}
+                                >
+                                  <X className="size-4" />
+                                </button>
+                              )}
                             </div>
-                          ))}
+                            );
+                          })}
                           {list.length === 0 ? (
                             <button
                               className="flex w-full items-center gap-1.5 rounded-xl border border-dashed border-line px-3 py-2 text-sm text-muted"

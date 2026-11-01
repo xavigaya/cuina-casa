@@ -12,8 +12,14 @@ export interface Member {
   household_id: string;
   user_id: string;
   display_name: string | null;
-  role: "owner" | "member";
+  /** owner = privilegiat (ho pot fer tot) · member = col·laborador */
+  role: Role;
 }
+
+export type Role = "owner" | "member";
+
+/** Les receptes i els àpats que afegeix un col·laborador queden com a proposta */
+export type ApprovalStatus = "aprovada" | "proposta";
 
 export interface ShoppingItem {
   id: string;
@@ -61,6 +67,8 @@ export interface Recipe {
   is_component: boolean;
   yield_quantity: number | null;
   yield_unit: string | null;
+  status: ApprovalStatus;
+  created_by: string | null;
   created_at: string;
 }
 
@@ -88,6 +96,8 @@ export interface MealPlanEntry {
   recipe_id: string | null;
   note: string | null;
   servings: number | null;
+  status: ApprovalStatus;
+  created_by: string | null;
 }
 
 export interface Product {

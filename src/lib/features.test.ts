@@ -337,7 +337,7 @@ describe("duplicar receptes", async () => {
     const original = {
       id: "r1", household_id: "h", title: "Arròs a la cassola", servings: 4, prep_minutes: 40, instructions: "Sofregiu.\nAfegiu l'arròs.",
       source_url: null, image_url: "https://foto/arros.webp", tags: ["diumenge"], course: "plat_unic" as const, is_component: false,
-      yield_quantity: null, yield_unit: null, created_at: "",
+      yield_quantity: null, yield_unit: null, created_at: "", status: "aprovada" as const, created_by: null,
       recipe_ingredients: [
         { id: "a", recipe_id: "r1", position: 1, name: "sofregit", quantity: 200, unit: "g", section: "altres", optional: false, sub_recipe_id: "sofregit" },
         { id: "b", recipe_id: "r1", position: 0, name: "arròs", quantity: 400, unit: "g", section: "rebost", optional: false, sub_recipe_id: null },

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, CalendarDays, Home, Package, Settings, ShoppingCart } from "lucide-react";
+import { BookOpen, CalendarDays, History, Home, Package, Settings, ShoppingCart } from "lucide-react";
 import type { ReactNode } from "react";
 import { useHousehold } from "./household";
 import { Toaster } from "./ui";
@@ -35,7 +35,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <nav className="flex flex-1 flex-col gap-1">
-          {[...NAV, { href: "/ajustos", label: "Ajustos", icon: Settings }].map(({ href, label, icon: Icon }) => (
+          {[...NAV, { href: "/registre", label: "Registre", icon: History }, { href: "/ajustos", label: "Ajustos", icon: Settings }].map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
@@ -54,9 +54,14 @@ export function AppShell({ children }: { children: ReactNode }) {
         {/* Capçalera (mòbil) */}
         <div className="flex items-center justify-between px-4 pt-[max(env(safe-area-inset-top),0.75rem)] lg:hidden">
           <p className="text-sm font-semibold text-muted">{household.name}</p>
-          <Link href="/ajustos" aria-label="Ajustos" className="-mr-2 rounded-full p-2 text-muted">
-            <Settings className="size-5" />
-          </Link>
+          <div className="-mr-2 flex">
+            <Link href="/registre" aria-label="Registre d'accions" className={`rounded-full p-2 ${isActive("/registre") ? "text-tomato" : "text-muted"}`}>
+              <History className="size-5" />
+            </Link>
+            <Link href="/ajustos" aria-label="Ajustos" className={`rounded-full p-2 ${isActive("/ajustos") ? "text-tomato" : "text-muted"}`}>
+              <Settings className="size-5" />
+            </Link>
+          </div>
         </div>
 
         <PublicUrlBanner />

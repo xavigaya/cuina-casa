@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Apple, Bell, ChevronRight, Copy, LogOut, RefreshCw, Share2, Smartphone } from "lucide-react";
-import { useHousehold } from "@/components/household";
+import { Apple, Bell, ChevronRight, Copy, History, LogOut, RefreshCw, Share2, ShieldCheck, Smartphone } from "lucide-react";
+import { useHousehold, usePermissions } from "@/components/household";
+import { canChangeRole, ROLE_HELP, ROLE_LABEL } from "@/lib/permissions";
+import type { Member, Role } from "@/lib/types";
 import { PageHeader, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { onNonPublicHost, publicSiteUrl } from "@/lib/site-url";
@@ -27,6 +29,8 @@ export default function SettingsPage() {
   const [isIOS, setIsIOS] = useState(false);
   const [nonPublic, setNonPublic] = useState(false);
   const me = members.find((m) => m.user_id === user.id);
+  const { privileged } = usePermissions();
+  const [roleBusy, setRoleBusy] = useState<string | null>(null);
   const [myName, setMyName] = useState(me?.display_name ?? "");
 
   useEffect(() => {
@@ -45,14 +49,37 @@ export default function SettingsPage() {
 
   async function saveHousehold(e: React.FormEvent) {
     e.preventDefault();
-    const { error } = await supabase
-      .from("households")
-      .update({ name: name.trim() || household.name, servings, expiry_warning_days: warnDays })
-      .eq("id", household.id);
+    let error: { message: string } | null = null;
+    if (privileged) {
+      ({ error } = await supabase
+        .from("households")
+        .update({ name: name.trim() || household.name, servings, expiry_warning_days: warnDays })
+        .eq("id", household.id));
+    }
     if (!error && myName.trim() !== (me?.display_name ?? "")) {
       await supabase.from("household_members").update({ display_name: myName.trim() || null }).eq("household_id", household.id).eq("user_id", user.id);
     }
     toast(error ? "No s'ha pogut desar" : "Desat");
+    refresh();
+  }
+
+  async function changeRole(m: Member, role: Role) {
+    const who = m.display_name ?? "aquesta persona";
+    const msg =
+      role === "owner"
+        ? `${who} podrà fer-ho tot: aprovar propostes, esborrar qualsevol cosa i canviar els permisos. D'acord?`
+        : m.user_id === user.id
+          ? "Deixaràs de poder aprovar propostes i canviar els ajustos. D'acord?"
+          : `${who} passarà a col·laborador: només podrà proposar receptes i àpats i editar el que afegeixi. D'acord?`;
+    if (!confirm(msg)) return;
+    setRoleBusy(m.user_id);
+    const { error } = await supabase.rpc("set_member_role", { p_household: household.id, p_user: m.user_id, p_role: role });
+    setRoleBusy(null);
+    if (error) {
+      toast(/function|schema cache/i.test(error.message) ? "Cal executar la migració 0005 a Supabase" : error.message);
+      return;
+    }
+    toast(`${who}: ${ROLE_LABEL[role].toLowerCase()}`);
     refresh();
   }
 
@@ -101,7 +128,7 @@ export default function SettingsPage() {
             <label className="label" htmlFor="a-nom">
               Nom de la llar
             </label>
-            <input id="a-nom" className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
+            <input id="a-nom" disabled={!privileged} className="input" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
           </div>
           <div>
             <label className="label" htmlFor="a-jo">
@@ -114,15 +141,16 @@ export default function SettingsPage() {
               <label className="label" htmlFor="a-rac">
                 Persones a taula
               </label>
-              <input id="a-rac" className="input" type="number" min={1} max={20} value={servings} onChange={(e) => setServings(Math.min(20, Math.max(1, Number(e.target.value) || 1)))} />
+              <input id="a-rac" disabled={!privileged} className="input" type="number" min={1} max={20} value={servings} onChange={(e) => setServings(Math.min(20, Math.max(1, Number(e.target.value) || 1)))} />
             </div>
             <div>
               <label className="label" htmlFor="a-cad">
                 Avisa'm de caducitats (dies abans)
               </label>
-              <input id="a-cad" className="input" type="number" min={0} max={30} value={warnDays} onChange={(e) => setWarnDays(Math.min(30, Math.max(0, Number(e.target.value) || 0)))} />
+              <input id="a-cad" disabled={!privileged} className="input" type="number" min={0} max={30} value={warnDays} onChange={(e) => setWarnDays(Math.min(30, Math.max(0, Number(e.target.value) || 0)))} />
             </div>
           </div>
+          {!privileged && <p className="text-xs text-muted">Només una persona privilegiada pot canviar el nom de la llar, les racions i els avisos.</p>}
           <button className="btn-primary w-full">Desa</button>
         </form>
 
@@ -131,16 +159,47 @@ export default function SettingsPage() {
           <ul className="space-y-2">
             {members.map((m) => (
               <li key={m.user_id} className="flex items-center gap-3">
-                <span className="grid size-9 place-items-center rounded-full bg-herb-soft font-bold text-herb">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-herb-soft font-bold text-herb">
                   {(m.display_name ?? "?").charAt(0).toUpperCase()}
                 </span>
-                <span className="flex-1 font-medium">
-                  {m.display_name ?? "Sense nom"}
-                  {m.user_id === user.id && <span className="ml-1 text-sm font-normal text-muted">(tu)</span>}
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">
+                    {m.display_name ?? "Sense nom"}
+                    {m.user_id === user.id && <span className="ml-1 text-sm font-normal text-muted">(tu)</span>}
+                  </span>
+                  {!privileged && (
+                    <span className={`text-xs font-semibold ${m.role === "owner" ? "text-herb" : "text-muted"}`}>{ROLE_LABEL[m.role]}</span>
+                  )}
                 </span>
+                {privileged && (
+                  <select
+                    className="input !w-auto shrink-0 !py-1.5 text-sm"
+                    value={m.role}
+                    disabled={roleBusy !== null}
+                    onChange={(e) => changeRole(m, e.target.value as Role)}
+                    aria-label={`Permisos de ${m.display_name ?? "aquesta persona"}`}
+                  >
+                    {(["owner", "member"] as Role[]).map((r) => (
+                      <option key={r} value={r} disabled={r !== m.role && !canChangeRole(members, m.user_id, r)}>
+                        {ROLE_LABEL[r]}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </li>
             ))}
           </ul>
+          <div className="space-y-1.5 rounded-2xl bg-paper p-3 text-xs text-muted">
+            <p className="flex items-center gap-1.5 font-semibold text-ink">
+              <ShieldCheck className="size-4" /> Permisos
+            </p>
+            {(["owner", "member"] as Role[]).map((r) => (
+              <p key={r}>
+                <span className="font-semibold text-ink">{ROLE_LABEL[r]}:</span> {ROLE_HELP[r]}
+              </p>
+            ))}
+            <p>Qui entra amb el codi comença com a col·laborador.</p>
+          </div>
           <div className="rounded-2xl bg-paper p-4 text-center">
             <p className="text-sm text-muted">Codi per convidar algú de casa</p>
             <p className="my-2 font-mono text-3xl font-bold tracking-[0.25em]">{code}</p>
@@ -158,13 +217,24 @@ export default function SettingsPage() {
               >
                 <Copy className="size-4" />
               </button>
-              <button className="btn-secondary !px-3" onClick={regenerate} aria-label="Canvia el codi">
-                <RefreshCw className="size-4" />
-              </button>
+              {privileged && (
+                <button className="btn-secondary !px-3" onClick={regenerate} aria-label="Canvia el codi">
+                  <RefreshCw className="size-4" />
+                </button>
+              )}
             </div>
           </div>
           <p className="text-xs text-muted">Cada persona entra amb el seu compte de Google i, la primera vegada, escriu aquest codi.</p>
         </section>
+
+        <Link href="/registre" className="card flex items-center gap-3 p-5">
+          <History className="size-5 text-muted" />
+          <span className="flex-1">
+            <span className="block font-semibold">Registre d'accions</span>
+            <span className="text-sm text-muted">Qui ha fet cada canvi, i desfer els últims (un esborrat per error, per exemple).</span>
+          </span>
+          <ChevronRight className="size-5 text-muted" />
+        </Link>
 
         <Link href="/aliments" className="card flex items-center gap-3 p-5">
           <Apple className="size-5 text-muted" />

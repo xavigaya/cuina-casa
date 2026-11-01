@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Check, Merge, X } from "lucide-react";
-import { useHousehold } from "@/components/household";
+import { useHousehold, usePermissions } from "@/components/household";
 import { EmptyState, PageHeader, Spinner, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { buildFoodIndex } from "@/lib/nutrition";
@@ -29,6 +29,7 @@ function readIgnored(h: string): Set<string> {
 export default function UnifyPage() {
   const supabase = supabaseBrowser();
   const { household } = useHousehold();
+  const { privileged } = usePermissions();
   const [proposals, setProposals] = useState<UnifyProposal[] | null>(null);
   const [ignored, setIgnored] = useState<Set<string>>(new Set());
 
@@ -88,7 +89,11 @@ export default function UnifyPage() {
       </Link>
       <PageHeader title="Ingredients semblants" subtitle="Noms que semblen el mateix producte en receptes, rebost i llista." />
 
-      {!proposals ? (
+      {!privileged ? (
+        <EmptyState emoji="🔒" title="Només per a persones privilegiades">
+          Unificar noms canvia receptes de tota la família, així que només ho pot fer una persona amb tots els permisos.
+        </EmptyState>
+      ) : !proposals ? (
         <div className="grid place-items-center py-16">
           <Spinner />
         </div>

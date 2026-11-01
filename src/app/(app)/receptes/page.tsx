@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { AlertTriangle, Clock, Globe, Link2, Pencil, Plus, Search, Users } from "lucide-react";
-import { useHousehold, useLiveTable } from "@/components/household";
+import { useHousehold, useLiveTable, usePermissions } from "@/components/household";
+import { canModify, isProposal } from "@/lib/permissions";
 import { useNutrition } from "@/lib/use-nutrition";
 import { issuesLabel, needsReview, recipeIssues, type RecipeIssues } from "@/lib/recipe-issues";
 import { EmptyState, PageHeader, Sheet, Spinner } from "@/components/ui";
@@ -24,6 +25,8 @@ export default function RecipesPage() {
   const [course, setCourse] = useState<Course | "base" | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [onlyReview, setOnlyReview] = useState(false);
+  const [onlyProposals, setOnlyProposals] = useState(false);
+  const perms = usePermissions();
   const { household } = useHousehold();
   const nutrition = useNutrition(household.id);
 
@@ -38,6 +41,7 @@ export default function RecipesPage() {
     return map;
   }, [recipes, nutrition.recipes, nutrition.calculator]);
   const reviewCount = recipes.filter((r) => needsReview(issues.get(r.id)!)).length;
+  const proposalCount = recipes.filter(isProposal).length;
 
   const tags = useMemo(() => [...new Set(recipes.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b, "ca")), [recipes]);
   const visible = recipes.filter(
@@ -45,7 +49,8 @@ export default function RecipesPage() {
       (!query || normalizeText(r.title).includes(normalizeText(query))) &&
       (!tag || r.tags.includes(tag)) &&
       (course === "base" ? r.is_component : !course || r.course === course) &&
-      (!onlyReview || needsReview(issues.get(r.id)!)),
+      (!onlyReview || needsReview(issues.get(r.id)!)) &&
+      (!onlyProposals || isProposal(r)),
   );
   const usedCourses = COURSES.filter((c) => recipes.some((r) => r.course === c.id));
   const hasComponents = recipes.some((r) => r.is_component);
@@ -78,11 +83,16 @@ export default function RecipesPage() {
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input className="input !rounded-full !pl-10" placeholder="Busca una recepta…" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          {(usedCourses.length > 0 || hasComponents || reviewCount > 0) && (
+          {(usedCourses.length > 0 || hasComponents || reviewCount > 0 || proposalCount > 0) && (
             <div className="-mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
               <button className="chip" data-active={!course} onClick={() => setCourse(null)}>
                 Totes
               </button>
+              {proposalCount > 0 && (
+                <button className="chip !border-herb" data-active={onlyProposals} onClick={() => setOnlyProposals((v) => !v)}>
+                  💡 Propostes ({proposalCount})
+                </button>
+              )}
               {reviewCount > 0 && (
                 <button className="chip !border-saffron" data-active={onlyReview} onClick={() => setOnlyReview((v) => !v)}>
                   ⚠️ Cal revisar ({reviewCount})
@@ -147,6 +157,11 @@ export default function RecipesPage() {
                       {r.is_component ? "Preelaborat" : courseInfo(r.course)!.label}
                     </span>
                   )}
+                  {isProposal(r) && (
+                    <span className="absolute bottom-2 left-2 z-10 rounded-full bg-herb px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                      Proposta
+                    </span>
+                  )}
                   {r.image_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={r.image_url} alt="" className="size-full object-cover" loading="lazy" referrerPolicy="no-referrer" />
@@ -176,6 +191,7 @@ export default function RecipesPage() {
                 </div>
               </Link>
               {/* Botó petit per editar directament (fora de l'enllaç de la targeta) */}
+              {canModify(perms, r) && (
               <Link
                 href={`/receptes/${r.id}/editar`}
                 className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-paper/90 text-ink shadow-sm ring-1 ring-line transition active:scale-90"
@@ -184,6 +200,7 @@ export default function RecipesPage() {
               >
                 <Pencil className="size-3.5" />
               </Link>
+              )}
             </li>
             );
           })}

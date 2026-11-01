@@ -152,8 +152,9 @@ export async function saveRecipe(
 
   let id = existingId;
   if (id) {
-    const { error } = await supabase.from("recipes").update(row).eq("id", id);
+    const { data: updated, error } = await supabase.from("recipes").update(row).eq("id", id).select("id");
     if (error) throw error;
+    if (!updated?.length) throw new Error("No tens permís per editar aquesta recepta");
     await supabase.from("recipe_ingredients").delete().eq("recipe_id", id);
   } else {
     const { data, error } = await supabase

@@ -2,7 +2,9 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { Check, ChevronDown, PackagePlus, Pencil, Plus, ScanBarcode, Trash2 } from "lucide-react";
-import { useHousehold, useLiveTable } from "@/components/household";
+import { useHousehold, useLiveTable, usePermissions } from "@/components/household";
+import { canDeleteShoppingItem, canEditShoppingItem } from "@/lib/permissions";
+import { undoDeletes } from "@/lib/proposals";
 import { BarcodeScanner, lookupBarcode, rememberProduct } from "@/components/barcode-scanner";
 import { QuantityUnitFields, SectionSelect, parseQty, qtyToString } from "@/components/fields";
 import { EmptyState, PageHeader, Sheet, Spinner, toast } from "@/components/ui";
@@ -16,7 +18,8 @@ import type { PantryItem, ShoppingItem } from "@/lib/types";
 export default function ShoppingListPage() {
   const supabase = supabaseBrowser();
   const { household, user } = useHousehold();
-  const { rows: items, setRows, loading } = useLiveTable<ShoppingItem>("shopping_items", {
+  const perms = usePermissions();
+  const { rows: items, setRows, loading, reload } = useLiveTable<ShoppingItem>("shopping_items", {
     order: { column: "created_at" },
     offlineKey: "llista",
   });
@@ -108,8 +111,15 @@ export default function ShoppingListPage() {
   }
 
   /** Esborra productes de la llista i permet desfer-ho durant uns segons. */
-  async function removeItems(list: ShoppingItem[], message: string) {
-    if (!list.length) return;
+  async function removeItems(all: ShoppingItem[], message: string) {
+    // Un col·laborador només treu el que ha afegit ell i el que ja s'ha comprat
+    const list = all.filter((i) => canDeleteShoppingItem(perms, i));
+    const kept = all.length - list.length;
+    if (kept) message += kept === 1 ? " (1 producte d'una altra persona s'hi queda)" : ` (${kept} productes d'altres persones s'hi queden)`;
+    if (!list.length) {
+      if (kept) toast("Aquests productes els ha afegit una altra persona: no els pots treure");
+      return;
+    }
     const ids = list.map((i) => i.id);
     setRows((prev) => prev.filter((i) => !ids.includes(i.id)));
     const { error } = await supabase.from("shopping_items").delete().in("id", ids);
@@ -121,7 +131,11 @@ export default function ShoppingListPage() {
     toast(message, {
       label: "Desfés",
       run: async () => {
-        // Es tornen a crear amb les mateixes dades (i el mateix estat de «al carro»)
+        // Primer amb el registre (conserva qui ho havia afegit); si no hi és, es tornen a crear
+        if (!(await undoDeletes("shopping_items", ids))) {
+          reload();
+          return;
+        }
         const { data } = await supabase
           .from("shopping_items")
           .insert(list.map(({ id: _id, ...rest }) => rest))
@@ -265,7 +279,7 @@ export default function ShoppingListPage() {
               </h2>
               <ul className="card divide-y divide-line overflow-hidden">
                 {list.map((item) => (
-                  <ItemRow key={item.id} item={item} onToggle={() => toggle(item)} onEdit={() => setEditing(item)} />
+                  <ItemRow key={item.id} item={item} onToggle={() => toggle(item)} onEdit={canEditShoppingItem(perms, item) ? () => setEditing(item) : undefined} />
                 ))}
               </ul>
             </section>
@@ -283,7 +297,7 @@ export default function ShoppingListPage() {
               {showChecked && (
                 <ul className="card mb-3 divide-y divide-line overflow-hidden opacity-70">
                   {checked.map((item) => (
-                    <ItemRow key={item.id} item={item} onToggle={() => toggle(item)} onEdit={() => setEditing(item)} />
+                    <ItemRow key={item.id} item={item} onToggle={() => toggle(item)} onEdit={canEditShoppingItem(perms, item) ? () => setEditing(item) : undefined} />
                   ))}
                 </ul>
               )}
@@ -324,8 +338,10 @@ export default function ShoppingListPage() {
           await supabase.from("shopping_items").delete().eq("id", current.id);
           toast(`Esborrat: ${current.name}`, {
             label: "Desfés",
-            run: () =>
-              addItem({ name: current.name, quantity: current.quantity, unit: current.unit, section: current.section, note: current.note }),
+            run: async () => {
+              if (!(await undoDeletes("shopping_items", [current.id]))) return reload();
+              addItem({ name: current.name, quantity: current.quantity, unit: current.unit, section: current.section, note: current.note });
+            },
           });
         }}
       />
@@ -366,7 +382,7 @@ export default function ShoppingListPage() {
   );
 }
 
-function ItemRow({ item, onToggle, onEdit }: { item: ShoppingItem; onToggle: () => void; onEdit: () => void }) {
+function ItemRow({ item, onToggle, onEdit }: { item: ShoppingItem; onToggle: () => void; onEdit?: () => void }) {
   const qty = formatQuantity(item.quantity, item.unit);
   return (
     <li className="flex items-center">
@@ -390,9 +406,13 @@ function ItemRow({ item, onToggle, onEdit }: { item: ShoppingItem; onToggle: () 
           <span className="shrink-0 rounded-full bg-saffron-soft px-2 py-0.5 text-[10px] font-bold uppercase text-saffron">menú</span>
         )}
       </button>
-      <button className="shrink-0 p-3 text-muted" onClick={onEdit} aria-label={`Edita ${item.name}`}>
-        <Pencil className="size-4" />
-      </button>
+      {onEdit ? (
+        <button className="shrink-0 p-3 text-muted" onClick={onEdit} aria-label={`Edita ${item.name}`}>
+          <Pencil className="size-4" />
+        </button>
+      ) : (
+        <span className="w-10 shrink-0" aria-hidden />
+      )}
     </li>
   );
 }
