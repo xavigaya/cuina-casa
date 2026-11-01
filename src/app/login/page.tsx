@@ -1,11 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
+import { ConfigMissing } from "@/components/config-missing";
 
 export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  if (!supabaseConfigured) return <ConfigMissing />;
 
   async function signIn() {
     setBusy(true);

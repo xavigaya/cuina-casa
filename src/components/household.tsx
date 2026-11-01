@@ -2,7 +2,8 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { User } from "@supabase/supabase-js";
-import { supabaseBrowser } from "@/lib/supabase/client";
+import { supabaseBrowser, supabaseConfigured } from "@/lib/supabase/client";
+import { ConfigMissing } from "./config-missing";
 import type { Household, Member } from "@/lib/types";
 import { Onboarding } from "./onboarding";
 import { Spinner } from "./ui";
@@ -29,6 +30,11 @@ const STORAGE_KEY = "cuina-casa:llar";
  * mostra la pantalla per crear-ne una o unir-s'hi amb un codi.
  */
 export function HouseholdProvider({ children }: { children: ReactNode }) {
+  if (!supabaseConfigured) return <ConfigMissing />;
+  return <HouseholdLoader>{children}</HouseholdLoader>;
+}
+
+function HouseholdLoader({ children }: { children: ReactNode }) {
   const supabase = supabaseBrowser();
   const [user, setUser] = useState<User | null>(null);
   const [household, setHousehold] = useState<Household | null>(null);
