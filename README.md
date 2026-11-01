@@ -31,6 +31,9 @@ App web familiar per gestionar la cuina i les compres de casa. Funciona al mòbi
 - **Treure algú de la llar** (privilegiats) i **sortir de la llar**, amb l'opció de canviar el codi d'invitació.
 - **Avisos de caducitat** a la pantalla d'inici i, opcionalment, com a notificació del mòbil.
 - **Escaneig de codis de barres** amb la càmera, amb cerca a [Open Food Facts](https://world.openfoodfacts.org) i memòria dels productes de casa.
+- **Còpia de seguretat** (Ajustos → Dades i còpies): descarrega un fitxer amb receptes, menú, plantilles, rebost, llista, aliments, preus i supermercats. Un privilegiat la pot importar a la mateixa llar o a una altra: s'afegeix al que hi ha, sense duplicar receptes amb el mateix nom ni plats del mateix dia, i res no s'esborra. L'app recorda quan es va fer l'última i avisa si fa més d'un mes.
+- **Neteja de fotos**: les fotos que ja no fa servir cap recepta es guarden 90 dies (per poder desfer) i després s'esborren soles, amb una revisió setmanal.
+- **Sense pauses de Supabase**: una tasca diària de Vercel (`vercel.json`) fa una consulta lleugera perquè el projecte gratuït no es pausi per inactivitat.
 - **Instal·lable** (PWA) i amb còpia local de la llista i el rebost per consultar-les sense cobertura.
 
 ## Tecnologia

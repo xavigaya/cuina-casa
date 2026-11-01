@@ -8,6 +8,7 @@ import { canChangeRole, ROLE_HELP, ROLE_LABEL } from "@/lib/permissions";
 import type { Member, Role } from "@/lib/types";
 import { FoodPrefsSheet, foodPrefsSummary } from "@/components/food-prefs-sheet";
 import { PushSettings } from "@/components/push-settings";
+import { BackupSection } from "@/components/backup-section";
 import { PageHeader, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { onNonPublicHost, publicSiteUrl } from "@/lib/site-url";
@@ -352,6 +353,8 @@ export default function SettingsPage() {
             </div>
           </div>
         </section>
+
+        <BackupSection />
 
         <section className="card p-5">
           <p className="mb-3 text-sm text-muted">Has entrat com a {user.email}</p>

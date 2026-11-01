@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { isPrivateVercelHost } from "@/lib/site-url";
 
-const PUBLIC_PATHS = ["/login", "/auth/callback", "/manifest.webmanifest", "/sw.js", "/offline"];
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/manifest.webmanifest", "/sw.js", "/offline", "/api/keepalive"];
 
 /**
  * S'executa abans de cada pàgina: refresca la sessió de Supabase i
