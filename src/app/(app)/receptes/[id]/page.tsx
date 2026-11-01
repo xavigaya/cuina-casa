@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarPlus, Check, Clock, ExternalLink, ImagePlus, Languages, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Check, Clock, Copy, ExternalLink, ImagePlus, Languages, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useHousehold } from "@/components/household";
 import { Sheet, Spinner, toast } from "@/components/ui";
 import { PhotoSearchSheet } from "@/components/photo-search";
@@ -157,8 +157,11 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           <ArrowLeft className="size-5" /> Receptes
         </Link>
         <div className="flex">
-          <Link href={`/receptes/${recipe.id}/editar`} className="btn-ghost !px-3" aria-label="Edita">
+          <Link href={`/receptes/${recipe.id}/editar`} className="btn-ghost !px-3" aria-label="Edita" title="Edita">
             <Pencil className="size-5" />
+          </Link>
+          <Link href={`/receptes/nova?copia=${recipe.id}`} className="btn-ghost !px-3" aria-label="Duplica per fer-ne una variació" title="Duplica">
+            <Copy className="size-5" />
           </Link>
           <button className="btn-ghost !px-3" onClick={remove} aria-label="Esborra">
             <Trash2 className="size-5" />

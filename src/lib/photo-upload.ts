@@ -61,11 +61,17 @@ export async function uploadRecipePhoto(householdId: string, file: File): Promis
   return storage.getPublicUrl(path).data.publicUrl;
 }
 
-/** Si l'adreça és d'una foto pujada a l'app, l'esborra del magatzem (si no, no fa res). */
+/**
+ * Si l'adreça és d'una foto pujada a l'app i cap altra recepta no la fa servir
+ * (les receptes duplicades comparteixen la foto), l'esborra del magatzem.
+ */
 export async function deleteUploadedPhoto(url: string | null | undefined): Promise<void> {
   if (!url) return;
   const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
   const i = url.indexOf(marker);
   if (i < 0) return;
-  await supabaseBrowser().storage.from(PHOTO_BUCKET).remove([decodeURIComponent(url.slice(i + marker.length))]);
+  const supabase = supabaseBrowser();
+  const { data, error } = await supabase.from("recipes").select("id").eq("image_url", url).limit(1);
+  if (error || (data && data.length > 0)) return; // encara la fa servir una altra recepta
+  await supabase.storage.from(PHOTO_BUCKET).remove([decodeURIComponent(url.slice(i + marker.length))]);
 }

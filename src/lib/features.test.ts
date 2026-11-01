@@ -329,3 +329,25 @@ describe("traducció al català", async () => {
     expect(res.recipe.title).toBe("Lentejas con cebolla y aceite");
   });
 });
+
+describe("duplicar receptes", async () => {
+  const { draftFromRecipe, resolveLink, splitSteps } = await import("./recipes");
+  const { parseIngredientLine } = await import("./ingredients");
+  it("la còpia conserva ingredients, passos, tipus de plat, foto i enllaços amb preelaborats", () => {
+    const original = {
+      id: "r1", household_id: "h", title: "Arròs a la cassola", servings: 4, prep_minutes: 40, instructions: "Sofregiu.\nAfegiu l'arròs.",
+      source_url: null, image_url: "https://foto/arros.webp", tags: ["diumenge"], course: "plat_unic" as const, is_component: false,
+      yield_quantity: null, yield_unit: null, created_at: "",
+      recipe_ingredients: [
+        { id: "a", recipe_id: "r1", position: 1, name: "sofregit", quantity: 200, unit: "g", section: "altres", optional: false, sub_recipe_id: "sofregit" },
+        { id: "b", recipe_id: "r1", position: 0, name: "arròs", quantity: 400, unit: "g", section: "rebost", optional: false, sub_recipe_id: null },
+      ],
+    };
+    const d = draftFromRecipe(original);
+    expect(d.ingredientLines).toBe("400 g d'arròs\n200 g de sofregit");
+    expect(splitSteps(d.instructions)).toEqual(["Sofregiu.", "Afegiu l'arròs."]);
+    expect(d).toMatchObject({ course: "plat_unic", image_url: "https://foto/arros.webp", tags: ["diumenge"], servings: 4 });
+    const lines = d.ingredientLines.split("\n").map((l) => parseIngredientLine(l)!);
+    expect(lines.map((p) => resolveLink(p.name, d.links, []))).toEqual([null, "sofregit"]);
+  });
+});
