@@ -178,6 +178,7 @@ export function normalizeText(text: string): string {
 
 /** Singular aproximat per a paraules catalanes/castellanes ja normalitzades. */
 export function singularize(word: string): string {
+  if (word === "ous") return "ou"; // massa curt per a la regla general, però molt habitual
   if (word.length <= 3) return word;
   if (word.endsWith("ques")) return word.slice(0, -4) + "ca"; // vaques → vaca
   if (word.endsWith("gues")) return word.slice(0, -4) + "ga"; // pastanagues → pastanaga

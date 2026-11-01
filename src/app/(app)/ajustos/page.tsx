@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Apple, Bell, ChevronRight, Copy, History, LogOut, RefreshCw, Share2, ShieldCheck, Smartphone } from "lucide-react";
+import { Apple, Bell, Tag, ChevronRight, Copy, History, LogOut, RefreshCw, Share2, ShieldCheck, Smartphone } from "lucide-react";
 import { useHousehold, usePermissions } from "@/components/household";
 import { canChangeRole, ROLE_HELP, ROLE_LABEL } from "@/lib/permissions";
 import type { Member, Role } from "@/lib/types";
@@ -232,6 +232,15 @@ export default function SettingsPage() {
           <span className="flex-1">
             <span className="block font-semibold">Registre d'accions</span>
             <span className="text-sm text-muted">Qui ha fet cada canvi, i desfer els últims (un esborrat per error, per exemple).</span>
+          </span>
+          <ChevronRight className="size-5 text-muted" />
+        </Link>
+
+        <Link href="/preus" className="card flex items-center gap-3 p-5">
+          <Tag className="size-5 text-muted" />
+          <span className="flex-1">
+            <span className="block font-semibold">Preus</span>
+            <span className="text-sm text-muted">Preus aproximats per calcular el cost de la llista i del menú.</span>
           </span>
           <ChevronRight className="size-5 text-muted" />
         </Link>

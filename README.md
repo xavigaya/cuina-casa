@@ -5,6 +5,10 @@ App web familiar per gestionar la cuina i les compres de casa. Funciona al mòbi
 ## Què fa
 
 - **Llista de la compra** ordenada per seccions del súper, compartida i en temps real. S'hi escriu en llenguatge natural ("2 l de llet") o s'escaneja el codi de barres. En tornar del súper, el botó **Al rebost** passa el que s'ha comprat a l'inventari.
+- **Llista per supermercat**: cada súper (Bonpreu, Mercadona, el mercat…) pot tenir el seu ordre de seccions, i cada mòbil recorda en quin ets.
+- **Preus aproximats**: es posen des de cada producte de la llista o a Ajustos → Preus (p. ex. 1,15 € per 1 l). La llista mostra el cost de cada producte i el total, i el menú, el **cost aproximat de la setmana** i per ració (converteix unitats: 500 ml de llet, 2 cebes ≈ 300 g).
+- **Sols comprar**: a la llista surten els productes que es compren sovint i ja toca tornar a comprar (calculat amb el registre de les vegades que s'han marcat com a comprats), per afegir-los amb un toc.
+- **Sense cobertura**: l'app s'obre amb les últimes dades desades i a la llista es pot afegir i marcar productes; els canvis s'envien sols quan torna la connexió.
 - **Rebost, nevera i congelador** amb quantitats, dates de caducitat i avís quan en queda poc.
 - **Receptes** escrites a mà o **importades des d'un enllaç** de qualsevol web de cuina (llegeix el format estàndard schema.org/Recipe). La preparació és una llista numerada de passos, cada recepta pot ser entrant, primer, segon, plat únic o postres, i es pot **pujar una foto pròpia** des de l'ordinador o el mòbil (es redueix automàticament i es desa a Supabase Storage) o **buscar-ne una** a Internet (Openverse i Wikimedia Commons, amb llicència lliure).
 - **Receptes que cal revisar**: al llistat, les receptes amb ingredients sense dades nutricionals, sense ingredients o sense passos queden ressaltades (i hi ha el filtre «Cal revisar»). A la fitxa, l'app busca a Open Food Facts els valors dels ingredients desconeguts i en proposa una mitjana per acceptar-la amb un clic; i les receptes incompletes es poden completar amb una recepta trobada a Internet. Cada targeta del llistat té un botó per editar-la directament.
@@ -128,5 +132,6 @@ Quan una nova versió afegeix un fitxer a `supabase/migrations/`, cal executar-l
 | `0004_fotos_receptes.sql` | Magatzem de fotos per pujar imatges pròpies de les receptes |
 | `0005_permisos_i_registre.sql` | Permisos per llar (privilegiat i col·laborador), propostes de receptes i menú, registre d'accions i desfer |
 | `0006_plantilles_menu.sql` | Plantilles de menú setmanal |
+| `0007_supermercats_i_preus.sql` | Supermercats amb el seu ordre de seccions i preus aproximats dels productes |
 
 La llista d'aliments de referència és a `supabase/data/aliments.tsv`. Si la modifiques, regenera l'SQL amb `python3 scripts/generar-aliments.py` i executa'l a Supabase (es pot repetir: actualitza els aliments existents).

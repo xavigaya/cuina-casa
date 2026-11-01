@@ -25,6 +25,28 @@ export function useHousehold() {
 }
 
 const STORAGE_KEY = "cuina-casa:llar";
+const SNAPSHOT_KEY = "cuina-casa:llar-desada";
+
+type Snapshot = { userId: string; household: Household; members: Member[] };
+
+function readSnapshot(): Snapshot | null {
+  try {
+    return JSON.parse(localStorage.getItem(SNAPSHOT_KEY) ?? "null") as Snapshot | null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSnapshot(s: Snapshot) {
+  try {
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(s));
+  } catch {}
+}
+
+function looksOffline(error: { message?: string; name?: string } | null | undefined): boolean {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return true;
+  return /fetch|network|load failed|retryable/i.test(`${error?.name ?? ""} ${error?.message ?? ""}`);
+}
 
 /**
  * Carrega l'usuari i la seva llar. Si encara no en té cap,
@@ -45,8 +67,23 @@ function HouseholdLoader({ children }: { children: ReactNode }) {
 
   const load = useCallback(async () => {
     setError(null);
-    const { data: auth } = await supabase.auth.getUser();
+    const { data: auth, error: authErr } = await supabase.auth.getUser();
+
+    // Sense cobertura: es fa servir la sessió i la llar desades al mòbil
+    const useOfflineCopy = async (): Promise<boolean> => {
+      const { data: s } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
+      const cached = readSnapshot();
+      const u = auth.user ?? s.session?.user ?? null;
+      if (!u || !cached || cached.userId !== u.id) return false;
+      setUser(u);
+      setHousehold(cached.household);
+      setMembers(cached.members);
+      setLoading(false);
+      return true;
+    };
+
     if (!auth.user) {
+      if (looksOffline(authErr) && (await useOfflineCopy())) return;
       window.location.href = "/login";
       return;
     }
@@ -57,6 +94,7 @@ function HouseholdLoader({ children }: { children: ReactNode }) {
       .select("household_id, households(*)")
       .eq("user_id", auth.user.id);
     if (mErr) {
+      if (looksOffline(mErr) && (await useOfflineCopy())) return;
       setError(mErr.message);
       setLoading(false);
       return;
@@ -81,6 +119,7 @@ function HouseholdLoader({ children }: { children: ReactNode }) {
       } catch {}
       const { data: mem } = await supabase.from("household_members").select("*").eq("household_id", current.id);
       setMembers((mem as Member[]) ?? []);
+      writeSnapshot({ userId: auth.user.id, household: current, members: (mem as Member[]) ?? [] });
     }
     setLoading(false);
   }, [supabase]);

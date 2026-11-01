@@ -23,6 +23,8 @@ export const AREA_OF: Record<string, ActivityArea> = {
   recipes: "receptes",
   meal_plan: "menu",
   menu_templates: "menu",
+  stores: "llista",
+  product_prices: "llista",
   shopping_items: "llista",
   pantry_items: "rebost",
   foods: "aliments",
@@ -40,7 +42,7 @@ export const AREA_LABEL: Record<ActivityArea, string> = {
 };
 
 /** Les taules que undo_actions sap desfer */
-export const UNDOABLE = new Set(["recipes", "meal_plan", "shopping_items", "pantry_items", "foods", "menu_templates"]);
+export const UNDOABLE = new Set(["recipes", "meal_plan", "shopping_items", "pantry_items", "foods", "menu_templates", "stores", "product_prices"]);
 
 const MEAL_NAME: Record<string, string> = { esmorzar: "esmorzar", dinar: "dinar", sopar: "sopar" };
 const LOCATION_LABEL: Record<string, string> = { rebost: "al rebost", nevera: "a la nevera", congelador: "al congelador" };
@@ -116,6 +118,17 @@ export function describeEntry(e: ActivityEntry): string {
         return `ha editat ${name} ${LOCATION_FROM[loc] ?? "del rebost"}`;
       }
       return `ha tret ${name} ${LOCATION_FROM[loc] ?? "del rebost"}`;
+    }
+    case "stores":
+      if (e.action === "insert") return `ha afegit el supermercat ${name}`;
+      if (e.action === "update") return o?.name !== n?.name ? `ha canviat el supermercat ${name}` : `ha canviat l'ordre de les seccions de ${name}`;
+      return `ha esborrat el supermercat ${name}`;
+    case "product_prices": {
+      const p = n ?? o;
+      const price = p?.price != null ? ` (${Number(p.price).toLocaleString("ca", { style: "currency", currency: "EUR" })})` : "";
+      if (e.action === "insert") return `ha posat preu a ${name}${price}`;
+      if (e.action === "update") return `ha canviat el preu de ${name}${price}`;
+      return `ha esborrat el preu de ${name}`;
     }
     case "menu_templates":
       if (e.action === "insert") return `ha desat la plantilla de menú ${name}`;

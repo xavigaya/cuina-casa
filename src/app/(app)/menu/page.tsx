@@ -19,6 +19,7 @@ import type { Proposal } from "@/lib/harvard";
 import { DayFooter, WeekSummary, WeekendCard } from "@/components/menu-nutrition";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
 import { MenuTemplatesSheet } from "@/components/menu-templates";
+import { WeekCost } from "@/components/week-cost";
 
 type Entry = MealPlanEntry & { recipes: Pick<Recipe, "id" | "title" | "servings" | "image_url" | "course"> | null };
 
@@ -173,6 +174,8 @@ export default function MenuPage() {
           <LayoutTemplate className="size-5" />
         </button>
       </div>
+
+      <WeekCost entries={entries} />
 
       {analysis && analysis.daysWithData > 0 && <WeekSummary analysis={analysis} />}
 
