@@ -250,3 +250,75 @@ describe("fotos pujades", async () => {
     expect(fitWithin(800, 600)).toEqual({ width: 800, height: 600 });
   });
 });
+
+describe("traducció al català", async () => {
+  const { looksSpanish } = await import("./translate");
+  const { translateLines, translateRecipeToCatalan } = await import("./translate-server");
+  const { vi, afterEach } = await import("vitest");
+
+  /** Simula Apertium: tradueix algunes paraules i compta les crides. */
+  function mockApertium(dict: Record<string, string>, opts: { breakLines?: boolean; fail?: boolean } = {}) {
+    const calls: string[] = [];
+    vi.stubGlobal("fetch", async (_url: string, init: { body: string }) => {
+      const q = new URLSearchParams(init.body).get("q") ?? "";
+      calls.push(q);
+      if (opts.fail) return new Response("", { status: 503 });
+      let out = q.split("\n").map((l) => Object.entries(dict).reduce((acc, [es, ca]) => acc.replaceAll(es, ca), l)).join("\n");
+      if (opts.breakLines && q.includes("\n")) out = out.replace("\n", " ");
+      return new Response(JSON.stringify({ responseStatus: 200, responseData: { translatedText: out } }), { status: 200 });
+    });
+    return calls;
+  }
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("detecta receptes en castellà i no confon el català", () => {
+    expect(looksSpanish("Lentejas con verduras\n200 g de lentejas\n1 cebolla\nAñadir el aceite y cocinar 20 minutos")).toBe(true);
+    expect(looksSpanish("Llenties amb verdures\n200 g de llenties\n1 ceba\nAfegiu-hi l'oli i deixeu-ho coure 20 minuts")).toBe(false);
+    expect(looksSpanish("Amanida de llenties caviar")).toBe(false);
+    expect(looksSpanish("Paella")).toBe(false);
+  });
+
+  it("tradueix línies juntes i, si no quadren, d'una en una", async () => {
+    let calls = mockApertium({ cebolla: "ceba", aceite: "oli" });
+    expect(await translateLines(["1 cebolla", "aceite de oliva"])).toEqual(["1 ceba", "oli de oliva"]);
+    expect(calls).toHaveLength(1);
+    calls = mockApertium({ cebolla: "ceba" }, { breakLines: true });
+    expect(await translateLines(["1 cebolla", "sal"])).toEqual(["1 ceba", "sal"]);
+    expect(calls).toHaveLength(3);
+    mockApertium({}, { fail: true });
+    expect(await translateLines(["hola"])).toBeNull();
+  });
+
+  it("tradueix títol, ingredients i passos, i manté les quantitats", async () => {
+    mockApertium({ "Lentejas con verduras": "llenties amb verdures", lentejas: "llenties", cebolla: "ceba", "Cortar la": "Tallar la", "y cocinar": "i coure" });
+    const r = {
+      title: "Lentejas con verduras",
+      servings: 4,
+      prepMinutes: 30,
+      imageUrl: null,
+      sourceUrl: "https://x",
+      instructions: "Cortar la cebolla.\nAñadir las lentejas y cocinar.",
+      ingredients: [
+        { name: "lentejas", quantity: 300, unit: "g" as const, section: "rebost" as const, optional: false },
+        { name: "cebolla", quantity: 1, unit: "u" as const, section: "fruita" as const, optional: false },
+      ],
+    };
+    const { recipe, translated } = await translateRecipeToCatalan(r);
+    expect(translated).toBe(true);
+    expect(recipe.title).toBe("Llenties amb verdures");
+    expect(recipe.ingredients.map((i) => [i.quantity, i.unit, i.name])).toEqual([[300, "g", "llenties"], [1, "u", "ceba"]]);
+    expect(recipe.instructions).toBe("Tallar la ceba.\nAñadir las llenties i coure.");
+  });
+
+  it("no toca les receptes que ja són en català ni falla si el traductor no respon", async () => {
+    const calls = mockApertium({});
+    const ca = { title: "Llenties estofades", servings: 4, prepMinutes: null, imageUrl: null, sourceUrl: "x", instructions: "Bulliu les llenties amb la ceba.", ingredients: [{ name: "llenties", quantity: 300, unit: "g" as const, section: "rebost" as const, optional: false }] };
+    expect((await translateRecipeToCatalan(ca)).translated).toBe(false);
+    expect(calls).toHaveLength(0);
+    mockApertium({}, { fail: true });
+    const es = { ...ca, title: "Lentejas con cebolla y aceite", instructions: "Cocinar las lentejas con el aceite." };
+    const res = await translateRecipeToCatalan(es);
+    expect(res.translated).toBe(false);
+    expect(res.recipe.title).toBe("Lentejas con cebolla y aceite");
+  });
+});

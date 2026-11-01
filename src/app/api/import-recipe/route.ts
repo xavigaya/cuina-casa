@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { extractRecipeFromHtml } from "@/lib/recipe-import";
+import { translateRecipeToCatalan } from "@/lib/translate-server";
 import { supabaseServer } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -52,5 +53,7 @@ export async function POST(request: Request) {
       { status: 422 },
     );
   }
-  return NextResponse.json(recipe);
+  // Si és en castellà, es tradueix al català; es torna també l'original per poder-lo consultar
+  const { recipe: catalan, translated } = await translateRecipeToCatalan(recipe);
+  return NextResponse.json(translated ? { ...catalan, translated: true, original: recipe } : { ...recipe, translated: false });
 }

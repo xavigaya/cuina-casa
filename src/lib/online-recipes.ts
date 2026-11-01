@@ -18,6 +18,8 @@ export interface OnlineRecipe {
   incomplete: boolean;
   /** Què aporta per compensar el desequilibri que s'ha buscat */
   compensates: string[];
+  /** S'ha traduït automàticament del castellà */
+  translated: boolean;
   recipe: ImportedRecipe;
 }
 

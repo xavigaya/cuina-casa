@@ -6,6 +6,7 @@ import { PROTEIN_KINDS, compensationScore, evaluatePlate, plateShares, proteinKi
 import type { PlateGrams } from "./nutrition";
 import { buildFoodIndex, createNutritionCalculator, roundNutrients, type Food } from "./nutrition";
 import { courseFromCategory } from "./courses";
+import { translateRecipeToCatalan } from "./translate-server";
 
 const UA = "Mozilla/5.0 (compatible; CuinaCasa/1.0; +https://github.com/xavigaya/cuina-casa)";
 const LINKS_PER_SITE = 3;
@@ -122,6 +123,7 @@ export async function searchOnlineRecipes(
         : null,
       incomplete,
       compensates: nutri && imbalance ? compensationTags(nutri.plate, imbalance) : [],
+      translated: false,
       recipe: r,
     };
     return { item, score };
@@ -147,7 +149,14 @@ export async function searchOnlineRecipes(
     perSite.set(item.site, n + 1);
     results.push(item);
   }
-  return { results, queries };
+  // 5. Les receptes en castellà es tradueixen al català (només les que es mostren)
+  const translated = await Promise.all(
+    results.map(async (item) => {
+      const t = await translateRecipeToCatalan(item.recipe);
+      return t.translated ? { ...item, title: t.recipe.title, recipe: t.recipe, translated: true } : item;
+    }),
+  );
+  return { results: translated, queries };
 }
 
 /** Què aporta una recepta per compensar el desequilibri («Aporta verdura», «Aporta peix»…). */

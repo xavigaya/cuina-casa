@@ -184,6 +184,7 @@ export function OnlineRecipeCard({
             )}
             {courseInfo(r.course) && <span>{courseInfo(r.course)!.label}</span>}
             {r.perServing && <span>≈ {r.perServing.kcal} kcal/ració</span>}
+            {r.translated && <span>Traduïda del castellà</span>}
           </p>
         </div>
         {r.plate && r.evaluation && r.evaluation.status !== "no_avaluable" && (

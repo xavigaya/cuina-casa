@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, CalendarPlus, Check, Clock, ExternalLink, ImagePlus, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { ArrowLeft, CalendarPlus, Check, Clock, ExternalLink, ImagePlus, Languages, Link2, Minus, Pencil, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { useHousehold } from "@/components/household";
 import { Sheet, Spinner, toast } from "@/components/ui";
 import { PhotoSearchSheet } from "@/components/photo-search";
@@ -14,6 +14,8 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { loadRecipe, splitSteps } from "@/lib/recipes";
 import { courseInfo } from "@/lib/courses";
 import { ingredientKey } from "@/lib/ingredients";
+import { looksSpanish } from "@/lib/translate";
+import { guessSection } from "@/lib/sections";
 import { addMissingToShoppingList } from "@/lib/plan-actions";
 import { addDays, dayName, formatShortDate, toISODate } from "@/lib/dates";
 import { formatQuantity, roundQuantity, normalizeUnit } from "@/lib/units";
@@ -32,6 +34,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [linkedTitles, setLinkedTitles] = useState<Record<string, string>>({});
   const [usedIn, setUsedIn] = useState<{ id: string; title: string }[]>([]);
   const [busy, setBusy] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const nutrition = useNutrition(household.id);
 
   useEffect(() => {
@@ -98,6 +101,45 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
       toast("No s'ha pogut actualitzar la llista");
     }
     setBusy(false);
+  }
+
+  const isSpanish = looksSpanish([recipe.title, ...recipe.recipe_ingredients.map((i) => i.name), recipe.instructions ?? ""].join("\n"));
+
+  async function translate() {
+    setTranslating(true);
+    try {
+      const ings = [...recipe!.recipe_ingredients].sort((a, b) => a.position - b.position);
+      const stepsList = splitSteps(recipe!.instructions);
+      const res = await fetch("/api/translate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lines: [recipe!.title, ...ings.map((i) => i.name), ...stepsList] }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Error");
+      const t = json.lines as string[];
+      const title = t[0].charAt(0).toUpperCase() + t[0].slice(1);
+      const names = t.slice(1, 1 + ings.length);
+      const instructions = t.slice(1 + ings.length).join("\n") || null;
+      // Es tradueix fila a fila per conservar quantitats i enllaços amb preelaborats
+      const results = await Promise.all([
+        supabase.from("recipes").update({ title, instructions }).eq("id", recipe!.id),
+        ...ings.map((ing, k) =>
+          supabase
+            .from("recipe_ingredients")
+            .update({ name: names[k] || ing.name, section: ing.section !== "altres" ? ing.section : guessSection(names[k] || ing.name) })
+            .eq("id", ing.id),
+        ),
+      ]);
+      if (results.some((r) => r.error)) throw new Error("No s'ha pogut desar tota la traducció");
+      const fresh = await loadRecipe(recipe!.id);
+      if (fresh) setRecipe(fresh);
+      nutrition.reload();
+      toast("Recepta traduïda al català");
+    } catch (e) {
+      toast((e as Error).message);
+    }
+    setTranslating(false);
   }
 
   async function remove() {
@@ -167,6 +209,16 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           </a>
         )}
       </div>
+
+      {isSpanish && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-herb-soft/60 p-3 text-sm">
+          <Languages className="size-4 shrink-0 text-herb" />
+          <p className="flex-1">Aquesta recepta és en castellà.</p>
+          <button className="shrink-0 rounded-full bg-herb px-3 py-1.5 text-xs font-bold text-paper" onClick={translate} disabled={translating}>
+            {translating ? "Traduint…" : "Tradueix al català"}
+          </button>
+        </div>
+      )}
 
       <div className="mt-5 grid grid-cols-2 gap-2">
         <button className="btn-primary" onClick={() => setPlanOpen(true)}>
