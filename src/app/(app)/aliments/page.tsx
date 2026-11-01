@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Plus, Search, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, Merge, Plus, Search, Trash2 } from "lucide-react";
 import { useHousehold } from "@/components/household";
 import { Disclaimer } from "@/components/nutrition";
 import { PageHeader, Sheet, Spinner, toast } from "@/components/ui";
@@ -127,6 +128,14 @@ export default function FoodsPage() {
         </div>
       ) : (
         <>
+          <Link href="/aliments/unificar" className="card mb-4 flex items-center gap-3 p-4">
+            <Merge className="size-5 shrink-0 text-herb" />
+            <span className="flex-1">
+              <span className="block font-semibold">Unifica ingredients semblants</span>
+              <span className="text-xs text-muted">Troba noms que són el mateix producte («ceba» i «ceba dolça», «fulles de julivert»…)</span>
+            </span>
+            <ChevronRight className="size-5 text-muted" />
+          </Link>
           <div className="relative mb-3">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input className="input !rounded-full !pl-10" placeholder="Busca un aliment…" value={query} onChange={(e) => setQuery(e.target.value)} />

@@ -353,3 +353,44 @@ describe("Open Food Facts", async () => {
     expect(groupFromCategories([], "Llet sencera")).toBe("lactic");
   });
 });
+
+describe("unificar ingredients semblants", async () => {
+  const { findSimilarNames, levenshtein } = await import("./ingredient-unify");
+  const use = (name: string, n = 1, recipe = "R") => ({
+    name,
+    recipes: [recipe],
+    refs: Array.from({ length: n }, (_, i) => ({ table: "recipe_ingredients" as const, id: `${name}-${i}` })),
+  });
+
+  it("proposa variants, grafies i errates, i no barreja aliments coneguts diferents", () => {
+    const props = findSimilarNames(
+      [
+        use("ceba", 5), use("Ceba dolça", 2), use("cebes", 1), use("ceba tendra", 2),
+        use("julivert", 3), use("fulles de julivert", 1), use("julivet", 1),
+        use("tomàquet", 4), use("tomàquet triturat", 2),
+        use("pebre", 2), use("pebre vermell", 1),
+        use("arròs", 3),
+      ],
+      index,
+    );
+    const byTarget = Object.fromEntries(props.map((p) => [p.target, p.members.map((m) => m.name)]));
+    expect(byTarget["ceba"]).toEqual(["ceba", "Ceba dolça", "cebes"]);
+    expect(byTarget["julivert"]).toEqual(expect.arrayContaining(["julivert", "fulles de julivert", "julivet"]));
+    expect(Object.keys(byTarget)).toHaveLength(2); // ni tomàquet triturat, ni pebre vermell, ni ceba tendra
+    expect(props.find((p) => p.target === "ceba")!.members.find((m) => m.name === "ceba")!.count).toBe(5);
+  });
+
+  it("agrupa només per grafia quan el nom és el mateix", () => {
+    const [p] = findSimilarNames([use("Llenties", 1), use("llentia", 2), use("llenties", 1)], index);
+    expect(p.target).toBe("llentia");
+    expect(p.members.find((m) => m.name === "Llenties")!.count).toBe(2); // «Llenties» i «llenties» són el mateix text
+    const [g] = findSimilarNames([use("Cebes", 1), use("ceba", 3)], index);
+    expect(g.reason).toBe("grafia");
+    expect(g.target).toBe("ceba");
+  });
+
+  it("calcula la distància d'edició", () => {
+    expect(levenshtein("julivet", "julivert")).toBe(1);
+    expect(levenshtein("ceba", "ceba")).toBe(0);
+  });
+});
