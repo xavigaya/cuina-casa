@@ -138,3 +138,42 @@ export function queriesForImbalance(imb: Imbalance): string[] {
   if (q.length === 0) q.push("verduras al horno");
   return uniq(q).slice(0, 3);
 }
+
+const STOPWORDS = new Set([
+  "con", "amb", "para", "per", "sin", "sense", "horno", "forn", "casera", "casero", "facil", "rapida", "rapido",
+  "receta", "recepta", "como", "hacer", "estilo", "tipo", "verduras", "verdures",
+]);
+
+/** Paraules clau d'una cerca (sense accents, en singular, sense paraules buides). */
+export function queryKeywords(query: string): string[] {
+  const words = normalizeText(query)
+    .replace(/[^a-z0-9 ]/g, " ")
+    .split(" ")
+    .filter((w) => w.length >= 4 && !STOPWORDS.has(w));
+  // Afegeix l'equivalent català/castellà («merluza» → «lluc»), perquè TV3 publica en català
+  const expanded = new Set(words);
+  for (const terms of Object.values(TV3_INGREDIENTS)) {
+    if (terms.some((t) => words.includes(t))) terms.forEach((t) => t.length >= 3 && expanded.add(t));
+  }
+  return [...new Set([...expanded].map(singularizeLoose))];
+}
+
+function singularizeLoose(w: string): string {
+  if (w.endsWith("es") && w.length > 5) return w.slice(0, -2);
+  if (w.endsWith("s") && w.length > 4) return w.slice(0, -1);
+  return w;
+}
+
+/** Hi apareix alguna de les paraules clau (o el text no en té cap, i llavors no es filtra)? */
+export function matchesKeywords(text: string, keywords: string[]): boolean {
+  if (!keywords.length) return true;
+  const hay = normalizeText(text).replace(/[^a-z0-9 ]/g, " ");
+  return keywords.some((k) => hay.includes(k));
+}
+
+/** Posa primer els enllaços que porten alguna paraula clau a l'adreça. */
+export function relevantFirst(links: string[], keywords: string[]): string[] {
+  if (!keywords.length) return links;
+  const hit = (l: string) => keywords.some((k) => l.toLowerCase().includes(k));
+  return [...links.filter(hit), ...links.filter((l) => !hit(l))];
+}

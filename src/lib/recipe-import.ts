@@ -68,7 +68,8 @@ export function parseLenientJson(raw: string): unknown {
       }
       if (ch === '"') inString = false;
       // Caràcters de control dins d'un text: els convertim en espai
-      fixed += ch < " " ? " " : ch;
+      // Salts de línia dins d'un text: es conserven com a \n; la resta de caràcters de control, espai
+      fixed += ch === "\n" ? "\\n" : ch < " " ? " " : ch;
       continue;
     }
     if (ch === '"') inString = true;
@@ -207,9 +208,22 @@ function asString(v: unknown): string | null {
 
 function toStringArray(v: unknown): string[] {
   if (!v) return [];
-  if (typeof v === "string") return v.split(/\n+/).filter(Boolean);
-  if (Array.isArray(v)) return v.map((x) => asString(x) ?? asString((x as Json)?.text) ?? "").filter(Boolean);
-  return [];
+  const items = typeof v === "string" ? [v] : Array.isArray(v) ? v.map((x) => asString(x) ?? asString((x as Json)?.text) ?? "") : [];
+  // Algunes webs (p. ex. TV3) posen tots els ingredients en un sol text, línia per línia
+  return items
+    .flatMap((x) => x.split(/\r?\n+/))
+    .map((x) => x.trim())
+    .filter((x) => x && !isIngredientHeader(x));
+}
+
+/** Capçaleres dins de la llista d'ingredients: «PER A 4 PERSONES:», «Per a la salsa:», «1 RACIÓ»… */
+function isIngredientHeader(line: string): boolean {
+  const l = decodeEntities(line).trim();
+  if (/:\s*$/.test(l)) return true;
+  if (/^(ingredients?|ingredientes?)\b/i.test(l)) return true;
+  if (/^(per a|para)\s+\d+\s*(persones?|personas?|racions?|raciones?|comensals?)/i.test(l)) return true;
+  if (/^\d+\s*(raci[oó]n?s?|racions|persones?|personas?|comensals?)$/i.test(l)) return true;
+  return false;
 }
 
 function flattenInstructions(v: unknown): string[] {
@@ -264,8 +278,8 @@ function stripTags(s: string): string {
 
 function decodeEntities(s: string): string {
   return s
-    .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
     .replace(/&quot;/g, '"')
     .replace(/&#0?39;|&apos;|&#x27;/g, "'")
     .replace(/&lt;/g, "<")

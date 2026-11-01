@@ -1,8 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { extractRecipeFromHtml } from "./recipe-import";
 import type { OnlineRecipe } from "./online-recipes";
-import { SITES, queriesForImbalance } from "./recipe-sites";
-import { compensationScore, evaluatePlate, type Imbalance } from "./harvard";
+import { SITES, matchesKeywords, queriesForImbalance, queryKeywords, relevantFirst } from "./recipe-sites";
+import { PROTEIN_KINDS, compensationScore, evaluatePlate, plateShares, proteinKinds, type Imbalance } from "./harvard";
+import type { PlateGrams } from "./nutrition";
 import { buildFoodIndex, createNutritionCalculator, roundNutrients, type Food } from "./nutrition";
 import { courseFromCategory } from "./courses";
 
@@ -43,20 +44,21 @@ export async function searchOnlineRecipes(
   const searches = queries.flatMap((q) =>
     SITES.map(async (site) => {
       const url = site.searchUrl(q);
-      if (!url) return { site, links: [] as string[] };
+      if (!url) return { site, keywords: [] as string[], links: [] as string[] };
       const text = await fetchText(url, 7000);
-      return { site, links: text ? site.extractLinks(text).slice(0, LINKS_PER_SITE) : [] };
+      const kws = queryKeywords(q);
+      return { site, keywords: kws, links: text ? relevantFirst(site.extractLinks(text), kws).slice(0, LINKS_PER_SITE) : [] };
     }),
   );
   const found = await Promise.all(searches);
-  const candidates: { url: string; site: string }[] = [];
+  const candidates: { url: string; site: string; keywords: string[] }[] = [];
   const seen = new Set<string>();
   for (let i = 0; i < LINKS_PER_SITE; i++) {
     for (const f of found) {
       const link = f.links[i];
       if (link && !seen.has(link) && !exclude.has(link)) {
         seen.add(link);
-        candidates.push({ url: link, site: f.site.name });
+        candidates.push({ url: link, site: f.site.name, keywords: f.keywords });
       }
     }
   }
@@ -66,7 +68,10 @@ export async function searchOnlineRecipes(
     candidates.slice(0, MAX_PAGES).map(async (c) => {
       const html = await fetchText(c.url);
       const recipe = html ? extractRecipeFromHtml(html, c.url) : null;
-      return recipe && recipe.ingredients.length >= 3 ? { ...c, recipe } : null;
+      if (!recipe || recipe.ingredients.length < 3) return null;
+      // Ha de tenir relació amb el que s'ha buscat (algunes webs barregen enllaços destacats)
+      const text = `${recipe.title} ${recipe.ingredients.map((i) => i.name).join(" ")}`;
+      return matchesKeywords(text, c.keywords) ? { ...c, recipe } : null;
     }),
   );
   const recipes = pages.filter((p): p is NonNullable<typeof p> => p !== null);
@@ -116,16 +121,26 @@ export async function searchOnlineRecipes(
         ? { score: evaluation.score, status: evaluation.status, advice: evaluation.advice.map((a) => a.text) }
         : null,
       incomplete,
+      compensates: nutri && imbalance ? compensationTags(nutri.plate, imbalance) : [],
       recipe: r,
     };
     return { item, score };
   });
 
-  // 4. Les millors 4, com a molt 2 de la mateixa web
+  // 4. Les millors 4, com a molt 2 de la mateixa web. Si falta alguna proteïna
+  //    a la setmana (p. ex. peix), s'hi inclou primer la millor recepta que en porti.
   scored.sort((a, b) => b.score - a.score);
   const results: OnlineRecipe[] = [];
   const perSite = new Map<string, number>();
+  if (imbalance?.missingProteins.length) {
+    const withProtein = scored.find(({ item }) => item.plate && proteinKinds(item.plate).some((k) => imbalance.missingProteins.includes(k)));
+    if (withProtein) {
+      results.push(withProtein.item);
+      perSite.set(withProtein.item.site, 1);
+    }
+  }
   for (const { item } of scored) {
+    if (results.includes(item)) continue;
     if (results.length >= 4) break;
     const n = perSite.get(item.site) ?? 0;
     if (n >= 2) continue;
@@ -133,4 +148,18 @@ export async function searchOnlineRecipes(
     results.push(item);
   }
   return { results, queries };
+}
+
+/** Què aporta una recepta per compensar el desequilibri («Aporta verdura», «Aporta peix»…). */
+export function compensationTags(plate: PlateGrams, imb: Imbalance): string[] {
+  const s = plateShares(plate);
+  const tags: string[] = [];
+  if (imb.needVeg && s.vegFruit >= 0.5) tags.push("Aporta verdura");
+  for (const k of proteinKinds(plate)) {
+    if (imb.missingProteins.includes(k)) tags.push(`Aporta ${PROTEIN_KINDS.find((p) => p.id === k)!.label.toLowerCase()}`);
+  }
+  if (imb.needProtein && s.protein >= 0.25 && !tags.some((t) => t.startsWith("Aporta ") && t !== "Aporta verdura")) tags.push("Aporta proteïna");
+  if (imb.tooMuchGrain && s.total > 0 && s.grains <= 0.2) tags.push("Poc cereal");
+  if (imb.refined && s.grains >= 0.1 && s.refinedOfGrains < 0.4) tags.push("Cereal integral");
+  return tags;
 }

@@ -155,7 +155,17 @@ export function OnlineRecipesSheet({
                     <div className="flex items-center gap-3">
                       <HarvardPlate plate={r.plate} size={56} />
                       <div className="min-w-0 flex-1">
-                        {status && <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${status.className}`}>{status.text}</span>}
+                        {request?.imbalance && r.compensates.length > 0 ? (
+                          <span className="flex flex-wrap gap-1">
+                            {r.compensates.map((t) => (
+                              <span key={t} className="rounded-full bg-herb-soft px-2 py-0.5 text-xs font-bold text-herb">
+                                {t}
+                              </span>
+                            ))}
+                          </span>
+                        ) : (
+                          status && <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${status.className}`}>{status.text}</span>
+                        )}
                         <p className="mt-1 text-xs text-muted">{r.evaluation.advice.slice(0, 2).join(" · ")}</p>
                       </div>
                     </div>

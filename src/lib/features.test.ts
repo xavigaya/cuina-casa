@@ -141,7 +141,24 @@ Afegiu-hi el sofregit."
     expect(r.prepMinutes).toBe(30);
     expect(r.category).toBe("Primer Plat");
     expect(r.ingredients.map((i) => i.name)).toEqual(["llenties pardines", "cabeça d'alls", "ceba"]);
+    expect(r.instructions).toBe("Bulliu les llenties.\nAfegiu-hi el sofregit.");
     expect(courseFromCategory(r.category)).toBe("primer");
+  });
+
+  it("separa els ingredients que venen en un sol text i treu les capçaleres (cas TV3)", () => {
+    const html = `<script type="application/ld+json">{"@type": "Recipe", "name": "Crema de llenties", "recipeYield": "4",
+      "recipeIngredient": ["1 RACIÓ
+200 g llenties cuites&amp;nbsp;
+50 ml llet de coco&amp;nbsp;
+
+Per a la guarnició:
+1 cullerada de cúrcuma"]}</script>`;
+    const r = extractRecipeFromHtml(html, "https://www.3cat.cat/y")!;
+    expect(r.ingredients.map((i) => [i.quantity, i.unit, i.name])).toEqual([
+      [200, "g", "llenties cuites"],
+      [50, "ml", "llet de coco"],
+      [1, "cullerada", "cúrcuma"],
+    ]);
   });
 
   it("corregeix comes sobrants i comentaris", () => {
@@ -210,5 +227,17 @@ describe("cerca de receptes a webs", async () => {
     expect(queriesForImbalance(imb({ needProtein: true, tooMuchRedMeat: true }))).toEqual(["pollo al horno"]);
     expect(queriesForImbalance(imb({})).length).toBeGreaterThan(0);
     expect(queriesForImbalance(imb({ needVeg: true, needProtein: true, missingProteins: ["peix", "llegum"] })).length).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("rellevància dels resultats", async () => {
+  const { queryKeywords, matchesKeywords, relevantFirst } = await import("./recipe-sites");
+  it("descarta receptes que no tenen relació amb la cerca, en català o castellà", () => {
+    const kws = queryKeywords("Merluza con verduras");
+    expect(kws).toEqual(expect.arrayContaining(["merluza", "lluc"]));
+    expect(matchesKeywords("Lluç a la planxa amb verdures", kws)).toBe(true);
+    expect(matchesKeywords("Buñuelos de viento", queryKeywords("lentejas"))).toBe(false);
+    expect(matchesKeywords("Amanida de llenties caviar", queryKeywords("lentejas"))).toBe(true);
+    expect(relevantFirst(["https://x/bunuelos/1/", "https://x/lentejas-estofadas/2/"], queryKeywords("lentejas"))[0]).toBe("https://x/lentejas-estofadas/2/");
   });
 });

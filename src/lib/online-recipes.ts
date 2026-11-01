@@ -16,6 +16,8 @@ export interface OnlineRecipe {
   plate: PlateGrams | null;
   evaluation: { score: number; status: string; advice: string[] } | null;
   incomplete: boolean;
+  /** Què aporta per compensar el desequilibri que s'ha buscat */
+  compensates: string[];
   recipe: ImportedRecipe;
 }
 
