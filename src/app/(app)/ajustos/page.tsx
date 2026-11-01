@@ -5,6 +5,7 @@ import { Bell, Copy, LogOut, RefreshCw, Share2, Smartphone } from "lucide-react"
 import { useHousehold } from "@/components/household";
 import { PageHeader, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { publicSiteUrl } from "@/lib/site-url";
 import { disableNotifications, enableNotifications, notificationsEnabled, notificationsSupported } from "@/lib/notifications";
 
 interface BeforeInstallPromptEvent extends Event {
@@ -53,7 +54,7 @@ export default function SettingsPage() {
   }
 
   async function share() {
-    const text = `Uneix-te a "${household.name}" a Cuina Casa amb el codi ${code}: ${window.location.origin}`;
+    const text = `Uneix-te a "${household.name}" a Cuina Casa amb el codi ${code}: ${publicSiteUrl()}`;
     if (navigator.share) {
       try {
         await navigator.share({ title: "Cuina Casa", text });
