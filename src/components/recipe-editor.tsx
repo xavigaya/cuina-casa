@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowUp, ImagePlus, Link2, Plus, Search, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ImagePlus, Link2, Plus, Trash2, X } from "lucide-react";
 import { useHousehold } from "./household";
 import { PhotoSearchSheet } from "./photo-search";
 import { Sheet, toast } from "./ui";
@@ -13,6 +13,7 @@ import { COURSES } from "@/lib/courses";
 import { normalizeText, sectionInfo } from "@/lib/sections";
 import { UNIT_OPTIONS, formatQuantity } from "@/lib/units";
 import { parseQty, qtyToString } from "./fields";
+import { deleteUploadedPhoto } from "@/lib/photo-upload";
 
 type Linkable = { id: string; title: string; is_component: boolean };
 
@@ -58,6 +59,8 @@ export function RecipeEditor({ initial, recipeId }: { initial: RecipeDraft; reci
         .filter(Boolean);
       const instructions = steps.map((s) => s.trim()).filter(Boolean).join("\n");
       const id = await saveRecipe(household.id, user.id, { ...draft, tags, instructions }, linkable, recipeId);
+      // Si s'ha canviat una foto pujada a l'app, s'esborra l'antiga del magatzem
+      if (initial.image_url && initial.image_url !== draft.image_url) deleteUploadedPhoto(initial.image_url).catch(() => {});
       toast("Recepta desada");
       router.replace(`/receptes/${id}`);
     } catch (err) {
@@ -76,7 +79,7 @@ export function RecipeEditor({ initial, recipeId }: { initial: RecipeDraft; reci
             <img src={draft.image_url} alt="" className="aspect-[16/10] w-full rounded-[var(--radius-card)] object-cover" referrerPolicy="no-referrer" />
             <div className="absolute bottom-3 right-3 flex gap-2">
               <button type="button" className="btn-secondary !min-h-0 !py-2 shadow" onClick={() => setPhotoOpen(true)}>
-                <Search className="size-4" /> Canvia
+                <ImagePlus className="size-4" /> Canvia
               </button>
               <button type="button" className="btn-secondary !min-h-0 !px-2.5 !py-2 shadow" onClick={() => set("image_url", null)} aria-label="Treu la foto">
                 <X className="size-4" />
@@ -90,7 +93,8 @@ export function RecipeEditor({ initial, recipeId }: { initial: RecipeDraft; reci
             onClick={() => setPhotoOpen(true)}
           >
             <ImagePlus className="size-7" />
-            <span className="text-sm font-semibold">Busca una foto del plat</span>
+            <span className="text-sm font-semibold">Afegeix una foto del plat</span>
+            <span className="text-xs">Puja-la des de l'ordinador o el mòbil, o busca'n una</span>
           </button>
         )}
       </div>

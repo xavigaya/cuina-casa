@@ -241,3 +241,12 @@ describe("rellevància dels resultats", async () => {
     expect(relevantFirst(["https://x/bunuelos/1/", "https://x/lentejas-estofadas/2/"], queryKeywords("lentejas"))[0]).toBe("https://x/lentejas-estofadas/2/");
   });
 });
+
+describe("fotos pujades", async () => {
+  const { fitWithin } = await import("./photo-upload");
+  it("redueix les fotos grans mantenint la proporció i no amplia les petites", () => {
+    expect(fitWithin(4032, 3024)).toEqual({ width: 1600, height: 1200 });
+    expect(fitWithin(3000, 4000)).toEqual({ width: 1200, height: 1600 });
+    expect(fitWithin(800, 600)).toEqual({ width: 800, height: 600 });
+  });
+});

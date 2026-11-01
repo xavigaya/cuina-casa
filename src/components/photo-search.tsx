@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ExternalLink, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ExternalLink, Search, Upload } from "lucide-react";
 import { Sheet, Spinner } from "./ui";
+import { useHousehold } from "./household";
+import { PhotoError, uploadRecipePhoto } from "@/lib/photo-upload";
 import type { ImageResult } from "@/lib/image-search";
 
 /** Finestra per buscar una foto del plat a Internet i triar-la. */
@@ -22,6 +24,24 @@ export function PhotoSearchSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pasted, setPasted] = useState("");
+  const { household } = useHousehold();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  async function upload(file: File | undefined) {
+    if (!file) return;
+    setUploading(true);
+    setUploadError(null);
+    try {
+      onPick(await uploadRecipePhoto(household.id, file));
+    } catch (e) {
+      setUploadError(e instanceof PhotoError ? e.message : "No s'ha pogut pujar la foto.");
+    }
+    setUploading(false);
+    if (fileRef.current) fileRef.current.value = "";
+  }
 
   async function search(q: string) {
     if (!q.trim()) return;
@@ -44,13 +64,44 @@ export function PhotoSearchSheet({
       setQuery(initialQuery);
       setResults(null);
       setPasted("");
+      setUploadError(null);
       if (initialQuery.trim()) search(initialQuery);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   return (
-    <Sheet open={open} onClose={onClose} title="Busca una foto">
+    <Sheet open={open} onClose={onClose} title="Foto del plat">
+      {/* Pujar una foto pròpia (ordinador: botó o arrossegar; mòbil: galeria o càmera) */}
+      <div
+        className={`mb-5 rounded-2xl border-2 border-dashed p-4 text-center transition ${dragging ? "border-tomato bg-tomato-soft" : "border-line"}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragging(false);
+          upload(e.dataTransfer.files?.[0]);
+        }}
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic,image/heif,image/*"
+          className="hidden"
+          onChange={(e) => upload(e.target.files?.[0])}
+        />
+        <button type="button" className="btn-primary w-full" onClick={() => fileRef.current?.click()} disabled={uploading}>
+          {uploading ? <Spinner className="!size-4 !border-white/40 !border-t-white" /> : <Upload className="size-4" />}
+          {uploading ? "Pujant la foto…" : "Puja una foto teva"}
+        </button>
+        <p className="mt-2 hidden text-xs text-muted sm:block">o arrossega-la aquí des de l'ordinador</p>
+        {uploadError && <p className="mt-2 rounded-xl bg-tomato-soft p-2 text-sm text-tomato">{uploadError}</p>}
+      </div>
+
+      <p className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">O busca'n una a Internet</p>
       <form
         className="mb-4 flex gap-2"
         onSubmit={(e) => {

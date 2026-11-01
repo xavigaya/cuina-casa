@@ -8,6 +8,7 @@ import { useHousehold } from "@/components/household";
 import { Sheet, Spinner, toast } from "@/components/ui";
 import { PhotoSearchSheet } from "@/components/photo-search";
 import { RecipeNutritionCard } from "@/components/nutrition";
+import { deleteUploadedPhoto } from "@/lib/photo-upload";
 import { useNutrition } from "@/lib/use-nutrition";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { loadRecipe, splitSteps } from "@/lib/recipes";
@@ -102,6 +103,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   async function remove() {
     if (!confirm(`Segur que vols esborrar "${recipe!.title}"?`)) return;
     await supabase.from("recipes").delete().eq("id", recipe!.id);
+    deleteUploadedPhoto(recipe!.image_url).catch(() => {});
     toast("Recepta esborrada");
     router.replace("/receptes");
   }
@@ -282,7 +284,10 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           setPhotoOpen(false);
           const { error } = await supabase.from("recipes").update({ image_url: url }).eq("id", recipe.id);
           if (error) toast("No s'ha pogut desar la foto");
-          else setRecipe({ ...recipe, image_url: url });
+          else {
+            if (recipe.image_url !== url) deleteUploadedPhoto(recipe.image_url).catch(() => {});
+            setRecipe({ ...recipe, image_url: url });
+          }
         }}
       />
 
