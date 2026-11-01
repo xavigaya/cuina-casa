@@ -8,6 +8,10 @@ import { useHousehold } from "@/components/household";
 import { Sheet, Spinner, toast } from "@/components/ui";
 import { PhotoSearchSheet } from "@/components/photo-search";
 import { RecipeNutritionCard } from "@/components/nutrition";
+import { MissingDataHelper } from "@/components/missing-data";
+import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
+import type { OnlineRecipe } from "@/lib/online-recipes";
+import { photoFromUrl } from "@/lib/photo-upload";
 import { deleteUploadedPhoto } from "@/lib/photo-upload";
 import { useNutrition } from "@/lib/use-nutrition";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -35,6 +39,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [usedIn, setUsedIn] = useState<{ id: string; title: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [translating, setTranslating] = useState(false);
+  const [onlineReq, setOnlineReq] = useState<OnlineSearchRequest | null>(null);
   const nutrition = useNutrition(household.id);
 
   useEffect(() => {
@@ -142,6 +147,48 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
     setTranslating(false);
   }
 
+  const missingParts = [
+    recipe.recipe_ingredients.length === 0 && "els ingredients",
+    steps.length === 0 && "els passos de preparació",
+  ].filter(Boolean) as string[];
+
+  /** Omple el que falta de la recepta amb una recepta trobada a Internet (sense tocar el que ja hi ha). */
+  async function completeFrom(r: OnlineRecipe) {
+    const current = recipe!;
+    const updates: Record<string, unknown> = {};
+    if (!current.instructions?.trim() && r.recipe.instructions) updates.instructions = r.recipe.instructions;
+    if (!current.prep_minutes && r.recipe.prepMinutes) updates.prep_minutes = r.recipe.prepMinutes;
+    if (!current.source_url) updates.source_url = r.url;
+    if (!current.course && r.course) updates.course = r.course;
+    if (!current.image_url && r.recipe.imageUrl) {
+      updates.image_url = await photoFromUrl(household.id, r.recipe.imageUrl).catch(() => r.recipe.imageUrl);
+    }
+    if (Object.keys(updates).length) {
+      const { error } = await supabase.from("recipes").update(updates).eq("id", current.id);
+      if (error) throw error;
+    }
+    if (current.recipe_ingredients.length === 0 && r.recipe.ingredients.length) {
+      // Les quantitats s'adapten a les racions de la nostra recepta
+      const factor = r.recipe.servings ? current.servings / r.recipe.servings : 1;
+      const { error } = await supabase.from("recipe_ingredients").insert(
+        r.recipe.ingredients.map((ing, position) => ({
+          recipe_id: current.id,
+          position,
+          name: ing.name,
+          quantity: ing.quantity == null ? null : roundQuantity(ing.quantity * factor, ing.unit === "u" ? null : ing.unit),
+          unit: ing.unit,
+          section: ing.section,
+          optional: ing.optional,
+        })),
+      );
+      if (error) throw error;
+    }
+    const fresh = await loadRecipe(current.id);
+    if (fresh) setRecipe(fresh);
+    nutrition.reload();
+    toast(`Recepta completada amb la de ${r.site}`);
+  }
+
   async function remove() {
     if (!confirm(`Segur que vols esborrar "${recipe!.title}"?`)) return;
     await supabase.from("recipes").delete().eq("id", recipe!.id);
@@ -212,6 +259,24 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           </a>
         )}
       </div>
+
+      {missingParts.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl border-2 border-saffron/60 bg-saffron-soft/60 p-3 text-sm">
+          <p className="min-w-0 flex-1">A aquesta recepta li falten {missingParts.join(" i ")}.</p>
+          <button
+            className="flex shrink-0 items-center gap-1.5 rounded-full bg-herb px-3 py-1.5 text-xs font-bold text-paper"
+            onClick={() =>
+              setOnlineReq({
+                query: recipe.title,
+                reason: `Tria una recepta d'Internet per completar ${missingParts.join(" i ")}. El que ja tens no es canviarà`,
+                complete: { label: "Completa amb aquesta", run: completeFrom },
+              })
+            }
+          >
+            Busca-la a Internet
+          </button>
+        </div>
+      )}
 
       {isSpanish && (
         <div className="mt-4 flex items-center gap-3 rounded-2xl bg-herb-soft/60 p-3 text-sm">
@@ -286,6 +351,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
             perServing={nutri.perServing}
             plate={nutri.plate}
             missing={nutri.missing}
+            missingSlot={<MissingDataHelper missing={nutri.missing} />}
             course={recipe.course}
             isComponent={recipe.is_component}
           />
@@ -330,6 +396,8 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           </ol>
         </section>
       )}
+
+      <OnlineRecipesSheet request={onlineReq} onClose={() => setOnlineReq(null)} />
 
       <PhotoSearchSheet
         open={photoOpen}

@@ -19,6 +19,8 @@ export interface OnlineSearchRequest {
   /** Àpat del menú on s'afegirà la recepta importada */
   target?: { day: string; meal: Meal } | null;
   query?: string;
+  /** En lloc d'importar com a recepta nova, completa una recepta existent */
+  complete?: { label: string; run: (r: OnlineRecipe) => Promise<void> };
 }
 
 const STATUS_LABEL: Record<string, { text: string; className: string }> = {
@@ -77,6 +79,16 @@ export function OnlineRecipesSheet({
 
   async function importIt(r: OnlineRecipe) {
     setImporting(r.url);
+    if (request?.complete) {
+      try {
+        await request.complete.run(r);
+        onClose();
+      } catch (e) {
+        toast(`No s'ha pogut completar: ${(e as Error).message}`);
+      }
+      setImporting(null);
+      return;
+    }
     try {
       const id = await importOnlineRecipe(household.id, user.id, r, household.servings);
       if (request?.target) {
@@ -133,7 +145,7 @@ export function OnlineRecipesSheet({
               showCompensation={!!request?.imbalance}
               importedId={imported[r.url]}
               importing={importing}
-              importLabel={request?.target ? "Importa i afegeix al menú" : "Importa"}
+              importLabel={request?.complete ? request.complete.label : request?.target ? "Importa i afegeix al menú" : "Importa"}
               onImport={() => importIt(r)}
             />
           ))}

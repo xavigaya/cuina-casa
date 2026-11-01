@@ -25,15 +25,18 @@ export function guessGroupFromName(name: string): HarvardGroup {
 
 const RULES: [RegExp, HarvardGroup][] = [
   [/fruit-juices|juices|nectars/, "beguda"],
+  [/meat-analogues|seitan|tempeh|tofu/, "llegum"],
+  [/coconut-milks|coconut-creams/, "greix"],
   [/(whole-?grain|wholemeal|integral).*(pasta|bread|rice|cereal|flour)|(pasta|bread|rice|cereal|flour).*(whole-?grain|wholemeal|integral)/, "cereal_integral"],
   [/hams|sausages|charcuter|prepared-meats|cured-meats|chorizo|salami|bacon|cold-cuts/, "carn_processada"],
   [/poultr|chicken|turkey/, "aviram"],
-  [/meats|beef|pork|lamb/, "carn_vermella"],
+  [/en:meats|beef|pork|lamb/, "carn_vermella"],
   [/fishes|seafood|tunas|sardines|salmon|anchov|mussels/, "peix"],
   [/en:eggs/, "ou"],
-  [/legumes|pulses|chickpeas|lentils|beans|hummus|tofu/, "llegum"],
-  [/potatoes|potato-chips|french-fries/, "patata"],
-  [/pastas|breads|rices|breakfast-cereals|flours|couscous|crackers|toasts/, "cereal_refinat"],
+  [/legumes|pulses|chickpeas|lentils|beans|hummus/, "llegum"],
+  // Abans que les patates: la categoria general «cereals-and-potatoes» no vol dir patata
+  [/pastas|breads|rices|breakfast-cereals|flours|couscous|crackers|toasts|cereal-grains/, "cereal_refinat"],
+  [/en:potatoes|potato-chips|french-fries|mashed-potatoes|fried-potatoes/, "patata"],
   [/cheeses|yogurts|milks|dairies|kefir|plant-based-milk/, "lactic"],
   [/nuts|seeds|peanut/, "fruits_secs"],
   [/olive-oils|vegetable-oils|olives/, "oli"],

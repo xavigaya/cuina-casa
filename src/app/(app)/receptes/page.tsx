@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Clock, Globe, Link2, Plus, Search, Users } from "lucide-react";
-import { useLiveTable } from "@/components/household";
+import { AlertTriangle, Clock, Globe, Link2, Pencil, Plus, Search, Users } from "lucide-react";
+import { useHousehold, useLiveTable } from "@/components/household";
+import { useNutrition } from "@/lib/use-nutrition";
+import { issuesLabel, needsReview, recipeIssues, type RecipeIssues } from "@/lib/recipe-issues";
 import { EmptyState, PageHeader, Sheet, Spinner } from "@/components/ui";
 import { OnlineRecipesSheet, type OnlineSearchRequest } from "@/components/online-recipes";
 import { DishesWithoutRecipe } from "@/components/dishes-without-recipe";
@@ -21,13 +23,29 @@ export default function RecipesPage() {
   const [tag, setTag] = useState<string | null>(null);
   const [course, setCourse] = useState<Course | "base" | null>(null);
   const [importOpen, setImportOpen] = useState(false);
+  const [onlyReview, setOnlyReview] = useState(false);
+  const { household } = useHousehold();
+  const nutrition = useNutrition(household.id);
+
+  // Què li falta a cada recepta (ingredients desconeguts, pesos, ingredients o passos)
+  const issues = useMemo(() => {
+    const map = new Map<string, RecipeIssues>();
+    for (const r of recipes) {
+      const graph = nutrition.recipes?.get(r.id);
+      const calc = nutrition.calculator?.byId(r.id) ?? null;
+      map.set(r.id, recipeIssues(r, graph ? graph.ingredients.length : 1, calc));
+    }
+    return map;
+  }, [recipes, nutrition.recipes, nutrition.calculator]);
+  const reviewCount = recipes.filter((r) => needsReview(issues.get(r.id)!)).length;
 
   const tags = useMemo(() => [...new Set(recipes.flatMap((r) => r.tags))].sort((a, b) => a.localeCompare(b, "ca")), [recipes]);
   const visible = recipes.filter(
     (r) =>
       (!query || normalizeText(r.title).includes(normalizeText(query))) &&
       (!tag || r.tags.includes(tag)) &&
-      (course === "base" ? r.is_component : !course || r.course === course),
+      (course === "base" ? r.is_component : !course || r.course === course) &&
+      (!onlyReview || needsReview(issues.get(r.id)!)),
   );
   const usedCourses = COURSES.filter((c) => recipes.some((r) => r.course === c.id));
   const hasComponents = recipes.some((r) => r.is_component);
@@ -60,11 +78,16 @@ export default function RecipesPage() {
             <Search className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted" />
             <input className="input !rounded-full !pl-10" placeholder="Busca una recepta…" value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          {(usedCourses.length > 0 || hasComponents) && (
+          {(usedCourses.length > 0 || hasComponents || reviewCount > 0) && (
             <div className="-mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
               <button className="chip" data-active={!course} onClick={() => setCourse(null)}>
                 Totes
               </button>
+              {reviewCount > 0 && (
+                <button className="chip !border-saffron" data-active={onlyReview} onClick={() => setOnlyReview((v) => !v)}>
+                  ⚠️ Cal revisar ({reviewCount})
+                </button>
+              )}
               {usedCourses.map((c) => (
                 <button key={c.id} className="chip" data-active={course === c.id} onClick={() => setCourse(course === c.id ? null : c.id)}>
                   {c.emoji} {c.plural}
@@ -110,9 +133,14 @@ export default function RecipesPage() {
         </EmptyState>
       ) : (
         <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {visible.map((r) => (
-            <li key={r.id}>
-              <Link href={`/receptes/${r.id}`} className="card block h-full overflow-hidden transition active:scale-[0.98]">
+          {visible.map((r) => {
+            const issue = issuesLabel(issues.get(r.id)!);
+            return (
+            <li key={r.id} className="relative">
+              <Link
+                href={`/receptes/${r.id}`}
+                className={`card block h-full overflow-hidden transition active:scale-[0.98] ${issue ? "!border-saffron/70 ring-1 ring-saffron/40" : ""}`}
+              >
                 <div className="relative aspect-[4/3] bg-line/60">
                   {(courseInfo(r.course) || r.is_component) && (
                     <span className="absolute left-2 top-2 rounded-full bg-paper/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-ink shadow-sm">
@@ -140,10 +168,25 @@ export default function RecipesPage() {
                       </span>
                     )}
                   </p>
+                  {issue && (
+                    <p className="mt-1.5 flex items-center gap-1 text-[11px] font-bold text-saffron">
+                      <AlertTriangle className="size-3 shrink-0" /> {issue}
+                    </p>
+                  )}
                 </div>
               </Link>
+              {/* Botó petit per editar directament (fora de l'enllaç de la targeta) */}
+              <Link
+                href={`/receptes/${r.id}/editar`}
+                className="absolute right-2 top-2 grid size-8 place-items-center rounded-full bg-paper/90 text-ink shadow-sm ring-1 ring-line transition active:scale-90"
+                aria-label={`Edita ${r.title}`}
+                title="Edita"
+              >
+                <Pencil className="size-3.5" />
+              </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

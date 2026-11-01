@@ -191,12 +191,15 @@ export function RecipeNutritionCard({
   missing,
   course,
   isComponent,
+  missingSlot,
 }: {
   perServing: Nutrients;
   plate: PlateGrams;
   missing: MissingIngredient[];
   course: string | null;
   isComponent: boolean;
+  /** Substitueix la llista d'ingredients sense dades (p. ex. per una amb propostes) */
+  missingSlot?: React.ReactNode;
 }) {
   const evaluation = evaluatePlate(plate);
   const skipPlate = isComponent || course === "postres" || evaluation.status === "no_avaluable";
@@ -233,7 +236,7 @@ export function RecipeNutritionCard({
         )}
       </div>
 
-      <MissingList missing={missing} />
+      {missingSlot ?? <MissingList missing={missing} />}
       <Disclaimer />
     </section>
   );

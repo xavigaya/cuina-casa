@@ -376,3 +376,54 @@ describe("plats del menú sense recepta", async () => {
     expect(dishKey("Macarrons de l'Àvia")).toBe(dishKey("macarrons de l avia"));
   });
 });
+
+describe("proposta de valors nutricionals (Open Food Facts)", async () => {
+  const { proposalFromProducts, significantWords } = await import("./food-lookup");
+  const { groupFromCategories } = await import("./off");
+  const p = (name: string, kcal: number, carbs: number, protein: number, fat: number, fiber: number, tags: string[] = []) => ({
+    product_name: name,
+    nutriments: { "energy-kcal_100g": kcal, carbohydrates_100g: carbs, proteins_100g: protein, fat_100g: fat, fiber_100g: fiber },
+    categories_tags: tags,
+  });
+
+  it("fa la mitjana dels productes relacionats i descarta la resta", () => {
+    const r = proposalFromProducts("farina d'espelta", ["harina de espelta", "farina d'espelta"], [
+      p("Harina de espelta integral", 335, 62, 14, 2.5, 10, ["en:cereals-and-potatoes", "en:flours"]),
+      p("Harina de Espelta", 340, 66, 12, 2, 7, ["en:cereals-and-potatoes", "en:flours"]),
+      p("Harina de espelta blanca", 345, 70, 11, 1.5, 4, ["en:flours"]),
+      p("Galletas de espelta", 470, 65, 8, 19, 5, ["en:biscuits"]), // no hi ha «harina»
+      p("Harina de espelta", 0, 0, 0, 0, 0).nutriments ? { product_name: "Harina de espelta sense dades" } : {},
+    ]);
+    expect(r).toMatchObject({ kcal: 340, carbs: 66, protein: 12, fat: 2, fiber: 7, harvard_group: "cereal_refinat", samples: 3 });
+    expect(proposalFromProducts("pols màgica", ["polvo magico"], [p("Harina", 340, 70, 10, 1, 3)])).toBeNull();
+    expect(significantWords("Llet de coco")).toEqual(["llet", "coco"]);
+  });
+
+  it("no confon la categoria «cereals i patates» amb les patates", () => {
+    expect(groupFromCategories(["en:plant-based-foods", "en:cereals-and-potatoes", "en:flours"], "Harina")).toBe("cereal_refinat");
+    expect(groupFromCategories(["en:cereals-and-potatoes", "en:meat-analogues", "en:seitan"], "Seitán")).toBe("llegum");
+    expect(groupFromCategories(["en:cereals-and-potatoes", "en:potatoes"], "Patatas")).toBe("patata");
+    expect(groupFromCategories(["en:plant-based-milks", "en:coconut-milks"], "Leche de coco")).toBe("greix");
+  });
+});
+
+describe("receptes que cal revisar", async () => {
+  const { recipeIssues, needsReview, issuesLabel } = await import("./recipe-issues");
+  it("detecta ingredients sense dades, sense pes, sense ingredients o sense passos", () => {
+    const missing = [
+      { name: "pols màgica", reason: "sense_dades" as const },
+      { name: "Pols màgica", reason: "sense_dades" as const, in: "Salsa" },
+      { name: "espinacs", reason: "sense_pes" as const },
+    ];
+    const a = recipeIssues({ instructions: "Barregeu-ho tot." }, 5, { missing });
+    expect(a).toEqual({ unknown: 1, noWeight: 1, noIngredients: false, noSteps: false });
+    expect(issuesLabel(a)).toBe("2 ingredients sense dades");
+    const b = recipeIssues({ instructions: null }, 0, null);
+    expect(needsReview(b)).toBe(true);
+    expect(issuesLabel(b)).toBe("Sense ingredients");
+    expect(issuesLabel(recipeIssues({ instructions: "  \n " }, 3, { missing: [] }))).toBe("Sense passos");
+    const ok = recipeIssues({ instructions: "1. Cuineu." }, 3, { missing: [] });
+    expect(needsReview(ok)).toBe(false);
+    expect(issuesLabel(ok)).toBeNull();
+  });
+});
