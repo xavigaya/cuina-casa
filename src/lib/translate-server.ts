@@ -4,7 +4,7 @@
  */
 import type { ImportedRecipe } from "./recipe-import";
 import { guessSection } from "./sections";
-import { looksSpanish } from "./translate";
+import { fixCatalanTranslation, looksSpanish } from "./translate";
 
 const APERTIUM = "https://apertium.org/apy/translate";
 const UA = "Mozilla/5.0 (compatible; CuinaCasa/1.0; +https://github.com/xavigaya/cuina-casa)";
@@ -54,13 +54,13 @@ export async function translateLines(lines: string[]): Promise<string[] | null> 
       if (translated == null) return false;
       const parts = translated.split("\n");
       if (parts.length === idx.length) {
-        idx.forEach((i, k) => (out[i] = parts[k].trim()));
+        idx.forEach((i, k) => (out[i] = fixCatalanTranslation(parts[k].trim())));
         return true;
       }
       // No quadra: d'un en un
       const singles = await Promise.all(idx.map((i) => apertium(lines[i])));
       if (singles.some((s) => s == null)) return false;
-      idx.forEach((i, k) => (out[i] = singles[k]!.trim()));
+      idx.forEach((i, k) => (out[i] = fixCatalanTranslation(singles[k]!.trim())));
       return true;
     }),
   );

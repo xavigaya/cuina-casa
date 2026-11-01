@@ -44,3 +44,30 @@ export function looksSpanish(text: string): boolean {
   const { es, ca } = languageScores(text);
   return es >= 2 && es > ca * 1.3;
 }
+
+/**
+ * Paraules de cuina que el traductor automàtic de vegades deixa en castellà.
+ * Es corregeixen després de traduir (paraula sencera, respectant la majúscula inicial).
+ */
+const COOKING_GLOSSARY: Record<string, string> = {
+  cucharadita: "culleradeta", cucharaditas: "culleradetes", cucharada: "cullerada", cucharadas: "cullerades",
+  cucharón: "cullerot", rallado: "ratllat", rallada: "ratllada", rallados: "ratllats", ralladas: "ratllades",
+  ralladura: "ratlladura", rallar: "ratllar", chorrito: "rajolí", chorro: "raig", pizca: "pessic", pellizco: "pessic",
+  lava: "renta", lavar: "rentar", lavamos: "rentem", lavad: "renteu", escurrir: "escórrer", escurre: "escorre",
+  pelar: "pelar", trocear: "trossejar", trocea: "trosseja", troceado: "trossejat", troceada: "trossejada",
+  sofreír: "sofregir", sofríe: "sofregeix", rehogar: "ofegar", rehoga: "ofega", hornear: "enfornar", hornea: "enforna",
+  batir: "batre", bate: "bat", varillas: "varetes", sartén: "paella", cazo: "cassó", cazuela: "cassola",
+  pimentón: "pebre vermell", perejil: "julivert", guisantes: "pèsols", judías: "mongetes", calabacín: "carbassó",
+  berenjena: "albergínia", puerro: "porro", zanahoria: "pastanaga", zanahorias: "pastanagues",
+};
+
+export function fixCatalanTranslation(text: string): string {
+  // Marques internes del traductor: *paraula desconeguda, #error, @sense traduir
+  let out = text.replace(/[*#@](?=[\p{L}\d])/gu, "");
+  out = out.replace(/\p{L}+/gu, (word) => {
+    const fix = COOKING_GLOSSARY[word.toLowerCase()];
+    if (!fix) return word;
+    return word[0] === word[0].toUpperCase() ? fix.charAt(0).toUpperCase() + fix.slice(1) : fix;
+  });
+  return out;
+}

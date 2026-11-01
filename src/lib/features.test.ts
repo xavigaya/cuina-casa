@@ -310,6 +310,13 @@ describe("traducció al català", async () => {
     expect(recipe.instructions).toBe("Tallar la ceba.\nAñadir las llenties i coure.");
   });
 
+  it("corregeix paraules de cuina que el traductor deixa en castellà", async () => {
+    const { fixCatalanTranslation } = await import("./translate");
+    expect(fixCatalanTranslation("taronges grans (1 cucharadita de ralladura)")).toBe("taronges grans (1 culleradeta de ratlladura)");
+    expect(fixCatalanTranslation("Lava la carabassa i afegeix un *chorrito d'oli")).toBe("Renta la carabassa i afegeix un rajolí d'oli");
+    expect(fixCatalanTranslation("ceba gran (aproximadament 150 #g)")).toBe("ceba gran (aproximadament 150 g)");
+  });
+
   it("no toca les receptes que ja són en català ni falla si el traductor no respon", async () => {
     const calls = mockApertium({});
     const ca = { title: "Llenties estofades", servings: 4, prepMinutes: null, imageUrl: null, sourceUrl: "x", instructions: "Bulliu les llenties amb la ceba.", ingredients: [{ name: "llenties", quantity: 300, unit: "g" as const, section: "rebost" as const, optional: false }] };
