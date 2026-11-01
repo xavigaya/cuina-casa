@@ -7,6 +7,8 @@ import { ArrowLeft, CalendarPlus, Check, Clock, ExternalLink, ImagePlus, Link2, 
 import { useHousehold } from "@/components/household";
 import { Sheet, Spinner, toast } from "@/components/ui";
 import { PhotoSearchSheet } from "@/components/photo-search";
+import { RecipeNutritionCard } from "@/components/nutrition";
+import { useNutrition } from "@/lib/use-nutrition";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { loadRecipe, splitSteps } from "@/lib/recipes";
 import { courseInfo } from "@/lib/courses";
@@ -29,6 +31,7 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
   const [linkedTitles, setLinkedTitles] = useState<Record<string, string>>({});
   const [usedIn, setUsedIn] = useState<{ id: string; title: string }[]>([]);
   const [busy, setBusy] = useState(false);
+  const nutrition = useNutrition(household.id);
 
   useEffect(() => {
     loadRecipe(id).then(async (r) => {
@@ -74,6 +77,16 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
     pantryKeys.has(ingredientKey(name)) || (!!subId && !!linkedTitles[subId] && pantryKeys.has(ingredientKey(linkedTitles[subId])));
   const missing = recipe.recipe_ingredients.filter((i) => !i.optional && !isAtHome(i.name, i.sub_recipe_id));
   const course = courseInfo(recipe.course);
+  const nutri = nutrition.calculator
+    ? nutrition.calculator.compute({
+        id: recipe.id,
+        title: recipe.title,
+        servings: recipe.servings,
+        yield_quantity: recipe.yield_quantity,
+        yield_unit: recipe.yield_unit,
+        ingredients: recipe.recipe_ingredients,
+      })
+    : null;
 
   async function addMissing() {
     setBusy(true);
@@ -209,6 +222,26 @@ export default function RecipePage({ params }: { params: Promise<{ id: string }>
           </p>
         )}
       </section>
+
+      <div className="mt-8">
+        {nutri ? (
+          <RecipeNutritionCard
+            perServing={nutri.perServing}
+            plate={nutri.plate}
+            missing={nutri.missing}
+            course={recipe.course}
+            isComponent={recipe.is_component}
+          />
+        ) : nutrition.error === "falta_migracio" ? (
+          <p className="card p-4 text-sm text-muted">
+            Per veure el valor nutricional, cal executar la migració <code className="font-mono">0003_dades_nutricionals.sql</code> a Supabase.
+          </p>
+        ) : nutrition.loading ? (
+          <div className="card grid place-items-center p-6">
+            <Spinner />
+          </div>
+        ) : null}
+      </div>
 
       {usedIn.length > 0 && (
         <section className="mt-6 rounded-2xl bg-saffron-soft/60 p-4">

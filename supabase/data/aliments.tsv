@@ -1,0 +1,221 @@
+# Valors aproximats per 100 g d'aliment cru i comestible (referència BEDCA/USDA, arrodonits).
+# Columnes: nom | àlies separats per ; | kcal | carbohidrats disponibles (sense fibra, com a les etiquetes europees) | proteïnes | greixos | fibra | grup Harvard | pes d'1 unitat (g) | pes d'1 envàs (g) | densitat (g/ml) | factor al plat
+# Grups: verdura fruita patata cereal_integral cereal_refinat llegum peix ou aviram carn_vermella carn_processada fruits_secs lactic oli greix sucre condiment beguda
+# El factor al plat corregeix els aliments que s'inflen en coure's (arròs, pasta, llegums secs) per comparar-los amb el Plat de Harvard.
+tomàquet	tomate;tomàquet madur;tomàquet de pera;tomàquet ratllat;tomate rallado	18	2.7	0.9	0.2	1.2	verdura	120			
+tomàquet cherry	tomate cherry;tomàquet xerri	18	2.7	0.9	0.2	1.2	verdura	15			
+tomàquet triturat	tomate triturado;tomàquet natural triturat;tomate natural	32	5.1	1.6	0.3	1.9	verdura		400		
+tomàquet fregit	tomate frito;salsa de tomàquet;salsa de tomate	80	9	1.5	3.5	2	verdura		350		
+concentrat de tomàquet	tomate concentrado;tomàquet concentrat	82	14.9	4.3	0.5	4.1	verdura		150		
+ceba	cebolla;ceba blanca;ceba de Figueres;cebolla morada;ceba morada	40	7.6	1.1	0.1	1.7	verdura	150			
+ceba tendra	cebolleta;cebetes;calçot	32	4.7	1.8	0.2	2.6	verdura	50			
+all	ajo;all sec;alls	149	30.9	6.4	0.5	2.1	verdura	5			
+porro	puerro	61	12.2	1.5	0.3	1.8	verdura	150			
+pastanaga	zanahoria	41	6.8	0.9	0.2	2.8	verdura	80			
+carbassó	calabacín	17	2.1	1.2	0.3	1	verdura	250			
+albergínia	berenjena	25	2.9	1	0.2	3	verdura	300			
+pebrot vermell	pimiento rojo;pebrot	31	3.9	1	0.3	2.1	verdura	180			
+pebrot verd	pimiento verde;pimiento italiano;pebrot italià	20	2.9	0.9	0.2	1.7	verdura	150			
+pebrot del piquillo	pimiento del piquillo;pimientos del piquillo	23	3.1	1	0.3	1.4	verdura	20	200		
+enciam	lechuga;lletuga;enciam romà;lechuga romana	15	1.6	1.4	0.2	1.3	verdura	300			
+escarola	escarola rizada	17	0.3	1.3	0.2	3.1	verdura	400			
+ruca	rúcula;rucula	25	2.1	2.6	0.7	1.6	verdura				
+canonges	canónigos	21	1.8	2	0.4	1.8	verdura				
+espinacs	espinaca;espinacas;espinac	23	1.4	2.9	0.4	2.2	verdura				
+bledes	acelga;acelgas;bleda	19	2.1	1.8	0.2	1.6	verdura				
+bròquil	brócoli;brocoli;bròcoli	34	4	2.8	0.4	2.6	verdura	400			
+coliflor		25	3	1.9	0.3	2	verdura	600			
+col	repollo;col llombarda;lombarda;col arrissada	25	3.3	1.3	0.1	2.5	verdura	800			
+carbassa	calabaza;carabassa	26	6	1	0.1	0.5	verdura				
+cogombre	pepino	15	3.1	0.7	0.1	0.5	verdura	200			
+mongeta tendra	judía verde;judías verdes;bajoqueta;mongetes tendres	31	4.3	1.8	0.2	2.7	verdura				
+pèsol	guisante;guisantes;pèsols	81	9.4	5.4	0.4	5.1	verdura				
+carxofa	alcachofa	47	5.1	3.3	0.2	5.4	verdura	120			
+espàrrec verd	espárrago verde;espàrrec;espárrago;espàrrecs	20	1.8	2.2	0.1	2.1	verdura	20			
+xampinyó	champiñón;champiñones;xampinyons	22	2.3	3.1	0.3	1	verdura	20			
+bolets	setas;seta;rovelló;rovellons;bolet	33	3.6	3.3	0.4	2.4	verdura				
+api	apio	16	1.4	0.7	0.2	1.6	verdura	40			
+remolatxa	remolacha	43	6.8	1.6	0.2	2.8	verdura	150			
+rave	rábano;rabanito	16	1.8	0.7	0.1	1.6	verdura	10			
+nap	nabo	28	4.6	0.9	0.1	1.8	verdura	120			
+fonoll	hinojo	31	4.2	1.2	0.2	3.1	verdura	250			
+moniato	boniato;batata	86	17	1.6	0.1	3	verdura	250			
+julivert	perejil	36	3	3	0.8	3.3	verdura		25		
+alfàbrega	albahaca	23	1.1	3.2	0.6	1.6	verdura				
+coriandre	cilantro	23	0.9	2.1	0.5	2.8	verdura				
+menta	hierbabuena;herba-sana	44	1.6	3.3	0.7	6.8	verdura				
+poma	manzana	52	11.6	0.3	0.2	2.4	fruita	180			
+pera		57	11.9	0.4	0.1	3.1	fruita	170			
+plàtan	plátano;banana	89	20.4	1.1	0.3	2.6	fruita	120			
+taronja	naranja	47	9.6	0.9	0.1	2.4	fruita	200			
+mandarina		53	11.2	0.8	0.3	1.8	fruita	80			
+llimona	limón	29	6.2	1.1	0.3	2.8	fruita	100			
+suc de llimona	zumo de limón	22	6.6	0.4	0.2	0.3	fruita			1	
+maduixa	fresa;fresas;maduixot	32	5.7	0.7	0.3	2	fruita	15			
+raïm	uva;uvas	69	17.1	0.7	0.2	0.9	fruita				
+préssec	melocotón;nectarina	39	8	0.9	0.3	1.5	fruita	150			
+albercoc	albaricoque	48	9	1.4	0.4	2	fruita	40			
+cirera	cereza	63	13.9	1.1	0.2	2.1	fruita	8			
+pruna	ciruela	46	9.6	0.7	0.3	1.4	fruita	60			
+meló	melón	34	7.3	0.8	0.2	0.9	fruita				
+síndria	sandía	30	7.2	0.6	0.2	0.4	fruita				
+kiwi		61	12	1.1	0.5	3	fruita	75			
+pinya	piña	50	11.6	0.5	0.1	1.4	fruita				
+mango		60	13.4	0.8	0.4	1.6	fruita	300			
+figa	higo;higos	74	16.1	0.8	0.3	2.9	fruita	50			
+nabius	arándanos;arándano	57	11.6	0.7	0.3	2.4	fruita				
+gerds	frambuesas;frambuesa	52	5.5	1.2	0.7	6.5	fruita				
+magrana	granada	83	15	1.7	1.2	4	fruita	250			
+panses	pasas;pansa	299	75.3	3.1	0.5	3.7	fruita				
+dàtil	dátil;dátiles	282	67	2.5	0.4	8	fruita	8			
+alvocat	aguacate	160	1.8	2	14.7	6.7	oli	170			
+olives	aceitunas;oliva;aceituna	145	0.5	1	15	3.3	oli	4	150		
+patata	patatas;papa;patata nova	77	14.8	2	0.1	2.2	patata	200			
+patates fregides	patatas fritas	312	37.2	3.4	15	3.8	patata				
+arròs	arroz;arròs bomba;arroz bomba;arròs rodó;arroz redondo;arròs llarg;arroz basmati;arròs basmati	360	77.7	6.6	0.6	1.3	cereal_refinat			0.85	3
+arròs integral	arroz integral	362	72.6	7.5	2.7	3.4	cereal_integral			0.85	3
+pasta	macarrons;macarrones;espaguetis;espaguetti;spaghetti;fideus;fideos;tallarines;tallarins;penne;fusilli;espirals;lasanya;lasaña;canelons;canelones;fideuà	371	71.8	13	1.5	3.2	cereal_refinat		500	0.6	2.5
+pasta integral	macarrons integrals;espaguetis integrals;macarrones integrales;espaguetis integrales	348	62	14.6	2.5	9	cereal_integral		500	0.6	2.5
+pasta fresca	pasta al huevo;tortellini;raviolis	288	51.8	11	3	2.2	cereal_refinat		250		1.3
+fideus d'arròs	fideos de arroz;noodles d'arròs	364	78.4	6	0.6	1.6	cereal_refinat				2.5
+cuscús	cuscus;couscous	376	72	13	0.6	5	cereal_refinat			0.7	2.5
+quinoa		368	57	14	6	7	cereal_integral			0.8	3
+bulgur		342	63.5	12	1.3	12.5	cereal_integral			0.7	2.5
+civada	avena;flocs de civada;copos de avena	389	55.4	17	7	10.6	cereal_integral			0.4	2
+blat de moro	maíz;maíz dulce;panís	86	17	3.3	1.4	2	cereal_integral		300		
+pa	pan;pa blanc;barra de pa;pan blanco;baguette;pa de pagès;pan de payés	265	46.3	9	3.2	2.7	cereal_refinat	250			
+pa integral	pan integral;pa de sègol;pan de centeno	247	34	13	3.4	7	cereal_integral	250			
+pa de motlle	pan de molde	265	46.5	8	3.5	2.5	cereal_refinat	25	450		
+pa ratllat	pan rallado	395	67.5	13	5.3	4.5	cereal_refinat			0.45	
+torrades	biscotes;pa torrat;tostadas	408	69	11	6	4	cereal_refinat	8			
+farina	harina;farina de blat;harina de trigo	364	73.3	10	1	2.7	cereal_refinat		1000	0.55	
+farina integral	harina integral	340	61.3	13	2.5	10.7	cereal_integral		1000	0.55	
+farina de blat de moro	maicena;maizena;fécula de maíz	381	90.1	0.3	0.1	0.9	cereal_refinat			0.55	
+massa de pizza	masa de pizza;base de pizza	270	48	8	3.5	2	cereal_refinat	250			
+pasta de full	hojaldre;masa de hojaldre;massa de full	550	44.5	7	38	1.5	cereal_refinat	275			
+tortilla de blat	tortilla de trigo;wrap;fajita	310	46.5	8	8	3.5	cereal_refinat	40			
+cereals d'esmorzar	cereales;corn flakes;cereals	380	81	7	1	3	cereal_refinat				
+galetes	galletas;galeta;galleta maría	470	67.5	6.5	18	2.5	sucre	8			
+croissant	cruasán;croissants	406	43.4	8	21	2.6	sucre	60			
+magdalena	magdalenes;magdalenas	430	50.8	6	22	1.2	sucre	35			
+cigrons	garbanzos;cigrons secs;garbanzos secos	364	44	19	6	17	llegum			0.8	2.5
+cigrons cuits	garbanzos cocidos;cigrons bullits;garbanzos de bote;cigrons en pot	139	10.4	7.2	2.6	7.6	llegum		250		
+llenties	lentejas;llenties seques;lentejas secas;llenties vermelles;lentejas rojas	352	49	25	1.1	11	llegum			0.8	2.5
+llenties cuites	lentejas cocidas;llenties bullides;lentejas de bote;llenties en pot	116	12.1	9	0.4	7.9	llegum		250		
+mongetes seques	alubias;judías blancas;mongeta blanca;alubias secas;fesols	333	45	23	0.9	15	llegum			0.8	2.5
+mongetes cuites	alubias cocidas;mongetes del ganxet;mongetes bullides;alubias de bote;mongetes en pot	105	9.7	7	0.5	6.3	llegum		250		
+faves	habas;fava	72	7.8	5.6	0.6	4.2	llegum				
+tofu		76	1.6	8	4.8	0.3	llegum		250		
+hummus	humus	166	8	8	9.6	6	llegum		200		
+lluç	merluza	86	0	17	1.8	0	peix				
+bacallà	bacalao;bacallà dessalat;bacalao desalado	82	0	18	0.7	0	peix				
+salmó	salmón	208	0	20	13	0	peix				
+salmó fumat	salmón ahumado	117	0	18	4.3	0	peix		100		
+tonyina	atún;bonítol;bonito	144	0	23	4.9	0	peix				
+tonyina en llauna	atún en lata;tonyina en conserva;atún en conserva;tonyina en oli	198	0	29	8	0	peix		60		
+sardina	sardinas;sardines	208	0	25	11	0	peix	40			
+seitó	boquerón;boquerones;seitons;anxova fresca	131	0	20	4.8	0	peix	20			
+anxoves	anchoas;anxova;anchoa	210	0	29	10	0	peix	4	50		
+gamba	gambas;llagostí;langostino;langostinos;llagostins;gambes	85	0	20	0.5	0	peix	15			
+calamar	calamars;calamares;anelles de calamar	92	3	15.6	1.4	0	peix				
+sípia	sepia	79	0.8	16	0.7	0	peix				
+pop	pulpo	82	2.2	15	1	0	peix				
+musclo	mejillón;mejillones;musclos	86	3.7	12	2.2	0	peix	15			
+cloïssa	almeja;almejas;cloïsses	74	2.6	13	1	0	peix	10			
+rap	rape	76	0	15	1.5	0	peix				
+orada	dorada	96	0	18	2.6	0	peix	400			
+llobarro	lubina;llobarro salvatge	97	0	18	2	0	peix	400			
+llenguado	lenguado	83	0	17	1.2	0	peix	250			
+surimi	palitos de cangrejo;barretes de surimi	99	15	7.6	0.5	0	peix	15			
+ou	huevo;ous;huevos;ou de gallina	143	0.7	12.6	9.5	0	ou	60			
+clara d'ou	clara de huevo;clares	52	0.7	11	0.2	0	ou	35			
+rovell d'ou	yema de huevo;rovell	322	3.6	16	27	0	ou	18			
+pollastre	pollo;pollastre de pagès;pollo entero	167	0	19	10	0	aviram				
+pit de pollastre	pechuga de pollo;pits de pollastre;pechugas	110	0	23	1.5	0	aviram	200			
+cuixa de pollastre	muslo de pollo;contramuslo;cuixes de pollastre;muslos	177	0	18	11.5	0	aviram	150			
+ales de pollastre	alitas de pollo;ales	203	0	18	14	0	aviram	50			
+gall dindi	pavo;pit de gall dindi;pechuga de pavo	115	0	22	2.5	0	aviram				
+conill	conejo	136	0	20	5.6	0	aviram				
+vedella	ternera;filet de vedella;filete de ternera;bistec	131	0	21	5	0	carn_vermella	150			
+carn picada	carne picada;carn picada mixta;picada de vedella;carne picada de ternera	250	0	17	20	0	carn_vermella				
+llom de porc	lomo de cerdo;llom;porc;cerdo;filet de porc;solomillo de cerdo	143	0	21	6	0	carn_vermella	120			
+costella de porc	costillas de cerdo;costella;costillas	277	0	16	23	0	carn_vermella				
+xai	cordero;costelletes de xai;chuletas de cordero	250	0	17	20	0	carn_vermella				
+hamburguesa	hamburguesas;hamburguesa de vedella	250	1	17	19	0	carn_vermella	120			
+botifarra	butifarra;botifarres	300	1	15	26	0	carn_processada	100			
+salsitxa	salchicha;salsitxes;frankfurt;salchichas	290	2	13	25	0	carn_processada	50			
+pernil salat	jamón serrano;jamón ibérico;pernil;jamón	241	0	31	13	0	carn_processada	15			
+pernil dolç	jamón cocido;jamón york;pernil cuit	113	1.5	18	4	0	carn_processada	15			
+pit de gall dindi en llesques	fiambre de pavo;pavo en lonchas	104	2	18	2	0	carn_processada	15			
+bacó	bacon;beicon;bacó fumat	417	0.7	13	40	0	carn_processada	15			
+cansalada	panceta;tocino	450	0	10	45	0	carn_processada				
+xoriço	chorizo	455	2	24	38	0	carn_processada				
+fuet	llonganissa;longaniza;salami;salchichón	450	2	25	38	0	carn_processada				
+sobrassada	sobrasada	470	1.5	13	46	0	carn_processada				
+mortadel·la	mortadela	311	3	15	26	0	carn_processada	15			
+ametlles	almendras;ametlla;almendra;ametlla marcona	579	9.5	21	50	12.5	fruits_secs				
+nous	nueces;nou;nuez	654	7.3	15	65	6.7	fruits_secs	5			
+avellanes	avellanas;avellana	628	7.3	15	61	9.7	fruits_secs				
+pinyons	piñones;pinyó	673	9.3	14	68	3.7	fruits_secs				
+cacauets	cacahuetes;cacauet;cacahuete	567	7.5	26	49	8.5	fruits_secs				
+pistatxos	pistachos;pistatxo	560	18	20	45	10	fruits_secs				
+sèsam	sésamo;llavors de sèsam;semillas de sésamo	573	11	18	50	12	fruits_secs				
+llavors de chía	semillas de chía;chía	486	8	17	31	34	fruits_secs				
+crema de cacauet	crema de cacahuete;mantega de cacauet	588	14	25	50	6	fruits_secs				
+llet	leche;llet sencera;leche entera	64	4.7	3.2	3.6	0	lactic			1.03	
+llet semidesnatada	leche semidesnatada	46	4.8	3.3	1.6	0	lactic			1.03	
+llet desnatada	leche desnatada	35	5	3.4	0.1	0	lactic			1.03	
+beguda de soja	bebida de soja;leche de soja;llet de soja	41	2	3.3	1.8	0.5	lactic			1.03	
+beguda de civada	bebida de avena;leche de avena;llet de civada	45	6.2	0.5	1.5	0.8	lactic			1.03	
+iogurt	yogur;iogurt natural;yogur natural;iogurts	61	4.7	3.5	3.3	0	lactic	125			
+iogurt grec	yogur griego	115	4	6	9	0	lactic	125			
+kefir		55	4	3.5	3	0	lactic			1.03	
+formatge	queso;formatge semicurat;queso semicurado;formatge curat;queso curado;formatge manxec;queso manchego	380	0.5	25	31	0	lactic				
+parmesà	parmesano;queso parmesano;formatge parmesà;grana padano	392	3.2	36	26	0	lactic				
+formatge fresc	queso fresco;queso de burgos;formatge de Burgos	174	3	12	13	0	lactic				
+mató	requesón;ricotta	130	3.5	10	8	0	lactic				
+mozzarella	mozarela;mozzarela	280	3	22	20	0	lactic	125			
+formatge de cabra	queso de cabra;rulo de cabra	360	1	22	30	0	lactic				
+formatge en llesques	queso en lonchas;formatge tendre	330	1	22	27	0	lactic	20			
+nata	nata líquida;crema de llet;nata per cuinar;nata para cocinar;nata para montar	292	3	2.2	30	0	greix		200	1	
+mantega	mantequilla;manteca	717	0.1	0.9	81	0	greix	10	250	0.95	
+maionesa	mayonesa;allioli;alioli	680	0.6	1	75	0	greix			0.95	
+oli d'oliva	aceite de oliva;oli;aceite;oli d'oliva verge extra;aceite de oliva virgen extra;AOVE	884	0	0	100	0	oli			0.92	
+oli de gira-sol	aceite de girasol;oli de girasol	884	0	0	100	0	oli			0.92	
+sucre	azúcar;sucre blanc;azúcar blanco;sucre morè;azúcar moreno	400	100	0	0	0	sucre			0.85	
+sucre glacé	azúcar glas;azúcar glass	400	100	0	0	0	sucre			0.55	
+mel	miel	304	81.8	0.3	0	0.2	sucre			1.4	
+melmelada	mermelada;confitura	250	62	0.4	0.1	1	sucre			1.3	
+xocolata	chocolate;xocolata negra;chocolate negro	546	54	4.9	31	7	sucre				
+cacau en pols	cacao en polvo;cacau pur	360	12	22	21	30	sucre			0.45	
+gelat	helado;gelats	207	23.3	3.5	11	0.7	sucre				
+llevat	levadura;llevat de forner;levadura de panadero;llevat químic;levadura química;impulsor	325	14	40	7.6	27	condiment	7		0.9	
+sal	sal fina;sal grossa;sal gruesa;sal marina	0	0	0	0	0	condiment			1.2	
+pebre	pimienta;pebre negre;pimienta negra;pebre blanc	251	39	10	3.3	25	condiment			0.5	
+pebre vermell	pimentón;pebre vermell dolç;pimentón dulce;pimentón picante;pebre vermell picant	282	19	14	13	35	condiment			0.45	
+comí	comino	375	33	18	22	11	condiment			0.45	
+orenga	orégano	265	26	9	4.3	43	condiment			0.2	
+farigola	tomillo	276	27	9	7.4	37	condiment			0.2	
+romaní	romero	331	21	4.9	15	43	condiment			0.2	
+llorer	laurel;fulla de llorer;hoja de laurel	313	49	7.6	8.4	26	condiment	0.2			
+canyella	canela;canyella en branca;canela en rama	247	28	4	1.2	53	condiment	2		0.45	
+safrà	azafrán	310	61	11	6	4	condiment			0.2	
+curri	curry;curri en pols	325	5	14	14	53	condiment			0.45	
+nou moscada	nuez moscada	525	28	6	36	21	condiment			0.45	
+gingebre	jengibre	80	16	1.8	0.8	2	condiment				
+bitxo	guindilla;bitxo vermell;chile;xili	40	7.5	2	0.4	1.5	condiment	2			
+vinagre	vinagre de vi;vinagre de Mòdena;vinagre de Módena	18	0	0	0	0	condiment			1	
+salsa de soja	salsa de soya;soja	53	4.1	8	0.6	0.8	condiment			1.1	
+mostassa	mostaza	66	1.8	4.4	3.3	4	condiment			1.05	
+quètxup	ketchup;kétchup	101	26.7	1	0.1	0.3	condiment			1.1	
+brou de pollastre	caldo de pollo;brou;caldo;brou d'au	5	0.4	0.6	0.2	0	condiment			1	
+brou de verdures	caldo de verduras;brou vegetal	5	0.9	0.3	0.1	0	condiment			1	
+brou de peix	caldo de pescado;fumet	8	0	1.2	0.3	0	condiment			1	
+pastilla de brou	pastilla de caldo;avecrem	250	15	10	17	0	condiment	10			
+gelatina	cola de pescado;fulles de gelatina	335	0	85	0	0	condiment	2			
+vi blanc	vino blanco;vi	82	2.6	0.1	0	0	beguda			1	
+vi negre	vino tinto	85	2.6	0.1	0	0	beguda			1	
+cervesa	cerveza	43	3.6	0.5	0	0	beguda			1	
+conyac	coñac;brandi;brandy	231	0	0	0	0	beguda			0.95	
+suc de taronja	zumo de naranja	45	10.2	0.7	0.2	0.2	beguda			1.04	
+aigua	agua	0	0	0	0	0	beguda			1	

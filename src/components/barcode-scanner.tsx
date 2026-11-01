@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Keyboard } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { guessSection } from "@/lib/sections";
+import { parseOffNutrition, type OffNutrition } from "@/lib/off";
+import { invalidateFoods } from "@/lib/use-nutrition";
 import { Sheet, Spinner } from "./ui";
 
 export interface ScannedProduct {
@@ -30,7 +32,7 @@ export async function lookupBarcode(householdId: string, barcode: string): Promi
 
   try {
     const res = await fetch(
-      `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,product_name_ca,product_name_es,generic_name,brands,quantity`,
+      `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,product_name_ca,product_name_es,generic_name,brands,quantity,product_quantity,product_quantity_unit,nutriments,categories_tags`,
     );
     if (res.ok) {
       const json = await res.json();
@@ -38,14 +40,41 @@ export async function lookupBarcode(householdId: string, barcode: string): Promi
       const base: string | undefined = p?.product_name_ca || p?.product_name_es || p?.product_name || p?.generic_name;
       if (base) {
         const brand = typeof p.brands === "string" ? p.brands.split(",")[0].trim() : "";
-        const name = brand && !base.toLowerCase().includes(brand.toLowerCase()) ? `${base} ${brand}` : base;
-        return { barcode, name: name.trim(), section: guessSection(base), known: true };
+        const name = (brand && !base.toLowerCase().includes(brand.toLowerCase()) ? `${base} ${brand}` : base).trim();
+        const nutrition = parseOffNutrition(p, base);
+        if (nutrition) saveOffFood(householdId, barcode, name, base.trim(), nutrition).catch(() => {});
+        return { barcode, name, section: guessSection(base), known: true };
       }
     }
   } catch {
     // Sense connexió o servei no disponible: l'usuari escriurà el nom
   }
   return { barcode, name: "", section: "altres", known: false };
+}
+
+/**
+ * Desa els valors d'Open Food Facts com a aliment propi de la llar, perquè les
+ * receptes que facin servir aquest producte (pel nom amb o sense marca) els aprofitin.
+ */
+async function saveOffFood(householdId: string, barcode: string, name: string, baseName: string, n: OffNutrition) {
+  const supabase = supabaseBrowser();
+  const { data: existing } = await supabase
+    .from("foods")
+    .select("id")
+    .eq("household_id", householdId)
+    .or(`barcode.eq.${barcode},name.eq.${JSON.stringify(name)}`)
+    .limit(1);
+  if (existing && existing.length) return;
+  const aliases = baseName && baseName.toLowerCase() !== name.toLowerCase() ? [baseName] : [];
+  const { error } = await supabase.from("foods").insert({
+    household_id: householdId,
+    name,
+    aliases,
+    ...n,
+    barcode,
+    source: "openfoodfacts",
+  });
+  if (!error) invalidateFoods();
 }
 
 /** Desa al catàleg de la llar perquè la propera vegada es reconegui a l'instant. */

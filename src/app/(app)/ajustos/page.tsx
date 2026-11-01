@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, Copy, LogOut, RefreshCw, Share2, Smartphone } from "lucide-react";
+import Link from "next/link";
+import { Apple, Bell, ChevronRight, Copy, LogOut, RefreshCw, Share2, Smartphone } from "lucide-react";
 import { useHousehold } from "@/components/household";
 import { PageHeader, toast } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -162,6 +163,15 @@ export default function SettingsPage() {
           </div>
           <p className="text-xs text-muted">Cada persona entra amb el seu compte de Google i, la primera vegada, escriu aquest codi.</p>
         </section>
+
+        <Link href="/aliments" className="card flex items-center gap-3 p-5">
+          <Apple className="size-5 text-muted" />
+          <span className="flex-1">
+            <span className="block font-semibold">Aliments i valors nutricionals</span>
+            <span className="text-sm text-muted">Consulta, corregeix o afegeix aliments per al càlcul de les receptes.</span>
+          </span>
+          <ChevronRight className="size-5 text-muted" />
+        </Link>
 
         <section className="card space-y-4 p-5">
           <h2 className="text-lg font-semibold">Al mòbil</h2>

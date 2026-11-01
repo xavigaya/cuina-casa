@@ -11,6 +11,10 @@ import { addMissingToShoppingList } from "@/lib/plan-actions";
 import { normalizeText } from "@/lib/sections";
 import { COURSES, COURSE_ORDER, courseInfo, type Course } from "@/lib/courses";
 import { MEALS, type Meal, type MealPlanEntry, type Recipe } from "@/lib/types";
+import { useNutrition } from "@/lib/use-nutrition";
+import { analyzeWeek } from "@/lib/menu-analysis";
+import type { Proposal } from "@/lib/harvard";
+import { DayFooter, WeekSummary, WeekendCard } from "@/components/menu-nutrition";
 
 type Entry = MealPlanEntry & { recipes: Pick<Recipe, "id" | "title" | "servings" | "image_url" | "course"> | null };
 
@@ -33,6 +37,25 @@ export default function MenuPage() {
   const [slot, setSlot] = useState<{ day: string; meal: Meal } | null>(null);
   const [busy, setBusy] = useState(false);
   const [showBreakfast, setShowBreakfast] = useState(false);
+  const nutrition = useNutrition(household.id);
+  const dayList = useMemo(() => weekDays(monday).map(toISODate), [monday]);
+
+  const analysis = useMemo(() => {
+    const calc = nutrition.calculator;
+    if (!calc || !nutrition.recipes) return null;
+    const candidates = [...nutrition.recipes.values()]
+      .filter((r) => !r.is_component && r.course !== "postres")
+      .map((r) => ({ id: r.id, title: r.title, course: r.course, plate: calc.byId(r.id)?.plate ?? {} }));
+    return analyzeWeek(entries, dayList, todayISO, (id) => calc.byId(id), candidates);
+  }, [nutrition.calculator, nutrition.recipes, entries, dayList, todayISO]);
+
+  async function addProposal(day: string, meal: Meal, proposal: Proposal) {
+    const { error } = await supabase
+      .from("meal_plan")
+      .insert(proposal.recipes.map((r) => ({ household_id: household.id, day, meal, recipe_id: r.id })));
+    toast(error ? "No s'ha pogut afegir" : `Afegit al ${MEALS.find((m) => m.id === meal)?.label.toLowerCase()}`);
+    reload();
+  }
 
   const visibleMeals = MEALS.filter((m) => m.id !== "esmorzar" || showBreakfast || entries.some((e) => e.meal === "esmorzar"));
   const byDayMeal = useMemo(() => {
@@ -97,18 +120,29 @@ export default function MenuPage() {
         {busy ? "Calculant…" : "Genera la llista de la compra"}
       </button>
 
+      {analysis && analysis.daysWithData > 0 && <WeekSummary analysis={analysis} />}
+
       {loading ? (
         <div className="grid place-items-center py-16">
           <Spinner />
         </div>
       ) : (
         <div className="space-y-3">
-          {weekDays(monday).map((d) => {
+          {weekDays(monday).map((d, dayIndex) => {
             const iso = toISODate(d);
             const isToday = iso === todayISO;
             const past = iso < todayISO;
+            const dayAnalysis = analysis?.days.find((a) => a.day === iso);
             return (
-              <section key={iso} className={`card p-4 ${isToday ? "ring-2 ring-tomato" : ""} ${past ? "opacity-60" : ""}`}>
+              <div key={iso} className="space-y-3">
+              {dayIndex === 5 && analysis && analysis.weekend.imbalance && analysis.weekend.slots.length > 0 && (
+                <WeekendCard
+                  proposals={analysis.weekend.proposals}
+                  slots={analysis.weekend.slots}
+                  onAdd={(slot, p) => addProposal(slot.day, slot.meal, p)}
+                />
+              )}
+              <section className={`card p-4 ${isToday ? "ring-2 ring-tomato" : ""} ${past ? "opacity-60" : ""}`}>
                 <h2 className="mb-2 flex items-baseline gap-2 font-sans">
                   <span className="text-base font-bold capitalize">{dayName(d)}</span>
                   <span className="text-sm text-muted">{formatShortDate(iso)}</span>
@@ -160,7 +194,9 @@ export default function MenuPage() {
                     );
                   })}
                 </div>
+                {dayAnalysis && <DayFooter analysis={dayAnalysis} onAdd={(p) => addProposal(iso, "sopar", p)} />}
               </section>
+              </div>
             );
           })}
           {!showBreakfast && !entries.some((e) => e.meal === "esmorzar") && (
@@ -275,3 +311,4 @@ function PickRecipe({
     </div>
   );
 }
+

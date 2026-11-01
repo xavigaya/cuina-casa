@@ -47,8 +47,15 @@ body {
   font-family: var(--font-sans);
 }
 
-h1,
-h2,
+@layer base {
+  /* Dins de la capa base perquè classes com font-sans la puguin sobreescriure */
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+}
+
 .font-display {
   font-family: var(--font-display);
   letter-spacing: -0.01em;

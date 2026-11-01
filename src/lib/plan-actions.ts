@@ -2,14 +2,18 @@ import { supabaseBrowser } from "./supabase/client";
 import { computeShoppingNeeds, expandPlannedMeals, type NeededItem, type RecipeNode } from "./shopping";
 import type { Household, PantryItem, ShoppingItem } from "./types";
 
+export type GraphRecipe = RecipeNode & { course: string | null; is_component: boolean; image_url: string | null };
+
 /** Carrega totes les receptes de la llar amb els ingredients (incloses les enllaçades). */
-async function loadRecipeGraph(householdId: string): Promise<Map<string, RecipeNode>> {
+export async function loadRecipeGraph(householdId: string): Promise<Map<string, GraphRecipe>> {
   const { data, error } = await supabaseBrowser()
     .from("recipes")
-    .select("id, title, servings, yield_quantity, yield_unit, recipe_ingredients!recipe_ingredients_recipe_id_fkey(name, quantity, unit, section, optional, sub_recipe_id)")
+    .select(
+      "id, title, servings, yield_quantity, yield_unit, course, is_component, image_url, recipe_ingredients!recipe_ingredients_recipe_id_fkey(name, quantity, unit, section, optional, sub_recipe_id)",
+    )
     .eq("household_id", householdId);
   if (error) throw error;
-  type Row = Omit<RecipeNode, "ingredients"> & { recipe_ingredients: RecipeNode["ingredients"] };
+  type Row = Omit<GraphRecipe, "ingredients"> & { recipe_ingredients: RecipeNode["ingredients"] };
   return new Map(((data as Row[]) ?? []).map((r) => [r.id, { ...r, ingredients: r.recipe_ingredients ?? [] }]));
 }
 

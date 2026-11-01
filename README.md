@@ -9,6 +9,7 @@ App web familiar per gestionar la cuina i les compres de casa. Funciona al mòbi
 - **Receptes** escrites a mà o **importades des d'un enllaç** de qualsevol web de cuina (llegeix el format estàndard schema.org/Recipe). La preparació és una llista numerada de passos, cada recepta pot ser entrant, primer, segon, plat únic o postres, i es pot **buscar una foto del plat** a Internet (Openverse i Wikimedia Commons, amb llicència lliure).
 - **Preelaborats enllaçats**: un sofregit, un brou o una salsa poden ser receptes pròpies i fer-se servir com a ingredient d'altres. Si no n'hi ha a casa, la llista de la compra hi afegeix els seus ingredients en la quantitat que cal.
 - **Menú setmanal** (esmorzar, dinar i sopar) que **genera la llista de la compra** sumant ingredients, adaptant les racions i restant el que ja hi ha a casa.
+- **Valor nutricional aproximat** de cada recepta per ració (kcal, carbohidrats, proteïnes, greixos i fibra), comparació amb el **Plat de Harvard** (½ verdura i fruita, ¼ cereals integrals, ¼ proteïna saludable) amb consells breus, i càlcul recursiu dels preelaborats. Al menú setmanal, totals per dia, mitjana de la setmana, varietat de proteïnes i **propostes compensatòries** per al sopar i el cap de setmana a partir de les receptes guardades. Es basa en una taula de ~200 aliments (valors de referència BEDCA/USDA, editable des de l'app) i aprofita les dades d'Open Food Facts dels productes escanejats. *És una aproximació orientativa, no un consell mèdic.*
 - **Avisos de caducitat** a la pantalla d'inici i, opcionalment, com a notificació del mòbil.
 - **Escaneig de codis de barres** amb la càmera, amb cerca a [Open Food Facts](https://world.openfoodfacts.org) i memòria dels productes de casa.
 - **Instal·lable** (PWA) i amb còpia local de la llista i el rebost per consultar-les sense cobertura.
@@ -109,3 +110,6 @@ Quan una nova versió afegeix un fitxer a `supabase/migrations/`, cal executar-l
 |---|---|
 | `0001_esquema_inicial.sql` | Taules, seguretat i temps real |
 | `0002_tipus_plat_i_preelaborats.sql` | Tipus de plat, preelaborats i receptes enllaçades |
+| `0003_dades_nutricionals.sql` | Taula d'aliments amb valors nutricionals (217 aliments de referència) |
+
+La llista d'aliments de referència és a `supabase/data/aliments.tsv`. Si la modifiques, regenera l'SQL amb `python3 scripts/generar-aliments.py` i executa'l a Supabase (es pot repetir: actualitza els aliments existents).
